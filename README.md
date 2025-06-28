@@ -36,8 +36,8 @@ Clap recognition, including its neural network is not very demanding. An Arduino
 
 ## Sound Sampling
 
-A clap lasts less than 7 ms. In this time we want to capure 256 samples which gives sapling rate of more than 35 kHz.
-
+A clap lasts around 7 ms. In this time we want to capture 256 samples which gives a sampling rate of 35 kHz. 
+It would be better to sample 10 ms with 40 kHz but due to limited processing power 7 ms with 35 kHz will do just fine.
 
 ## Neural Network
 
@@ -500,7 +500,7 @@ Similary we can calculate $\frac{\partial E}{\partial bias^{L}}$. We use the sam
 
 ## Implementation of backward propagation with C++ variadic template
 
-Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neural network here is implemented as C++ variadic template so one layer can not directly access another's internal data. This is why detla gets updated in two parts. In layer L+1 weight<sup>L+1</sup> x delta<sup>L+1</sup> gets calculated. Once the procssing is returned to layer _L_ it is multiplied by _af'(z<sup>L</sup>_).
+Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neural network here is implemented as C++ variadic template so one layer can not directly access another's internal data. This is why delta gets updated in two parts. In layer L+1 weight<sup>L+1</sup> x delta<sup>L+1</sup> gets calculated. Once the procssing is returned to layer _L_ it is multiplied by _af'(z<sup>L</sup>_).
 
 
 ```C++
@@ -637,7 +637,7 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
 
 ## Clap audio recording
 
-A clap has a distinctive shape on the oscilloscope, characterized by a loud, rapidly fading high-frequency sound. The most significant condition – a high amplitude of the sound is easily checked before the other features get estimated. These features are extracted or calculated from audio recording and (hopefully) distinguish claps from other loud sounds. Here are three examples of different loud sounds that result in differrent features as well. These features serve as the input to our neural network.
+A clap has a distinctive shape on the oscilloscope, characterized by a loud, rapidly fading high-frequency sound. The most significant condition – a high amplitude of the sound is easily checked before the other features get estimated. These features are extracted or calculated from audio recording and (hopefully) distinguish claps from other loud sounds. Here is an example of a clap audio recording and its features. These features serve as the input to our neural network.
 
 
 ![Clap characteristics](characteristics.jpg)
