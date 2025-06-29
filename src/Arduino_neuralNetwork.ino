@@ -2,7 +2,7 @@
 
     Arduino_neuralNetwork.ino
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Clap-Recognition-Using-a-Neural-Network-from-Scratch-Cpp-for-Arduino
 
     Sound sampling and clap recognition using neural network on Arduino Mega 2560
 
