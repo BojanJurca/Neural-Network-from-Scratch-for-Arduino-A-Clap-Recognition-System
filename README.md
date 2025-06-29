@@ -198,7 +198,7 @@ It is difficult to tell the neural network topology (meaning the number of layer
                             neuron [n] = 0;
 
                 // start returning the result through all the previous layers
-                    return nMax;
+                    return neuron;
             }
     };
 ```
