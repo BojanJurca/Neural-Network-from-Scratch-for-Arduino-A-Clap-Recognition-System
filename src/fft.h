@@ -2,7 +2,7 @@
 
     fft.h
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Clap-Recognition-Using-a-Neural-Network-from-Scratch-Cpp-for-Arduino
 
     Fast Fouriere Transform using Radix-2 algorithm with complexity of O (n log n), according to https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm
 
