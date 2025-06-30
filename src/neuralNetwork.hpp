@@ -190,7 +190,7 @@
                     return error;
                 }
 
-                // export the whole model as C++ initializer list
+                // export the whole model as C++ int32_t initializer list
                 friend ostream& operator << (ostream& os, const neuralNetworkLayer_t& nn) {
                     int32_t *p = (int32_t *) &nn;
                     os << "{";
@@ -205,7 +205,8 @@
                     os << "}\n";
                     return os;
                 }
-                
+
+                // import the model form C++ initializer list or int32_t array
                 template<size_t N>
                 neuralNetworkLayer_t& operator = (const int32_t (&model) [N]) {
                     static_assert (N == sizeof (*this) / sizeof (int32_t), "Wrong size of model!");
@@ -326,7 +327,7 @@
                 }
 
 
-                // export the whole model as C++ initializer list
+                // export the whole model as C++ int32_t initializer list
                 friend ostream& operator << (ostream& os, const neuralNetworkLayer_t& nn) {
                     int32_t *p = (int32_t *) &nn;
                     os << "{";
@@ -341,7 +342,8 @@
                     os << "}\n";
                     return os;
                 }
-                
+
+                // import the model form C++ initializer list or int32_t array
                 template<size_t N>
                 neuralNetworkLayer_t& operator = (const int32_t (&model) [N]) {
                     static_assert (N == sizeof (*this) / sizeof (int32_t), "Wrong size of model!");
