@@ -244,11 +244,13 @@ Training may be too demanding for Arduino boards, but you can do it on bigger ma
 
 ### Bacward propagation theory and formulas to update the weights and the biases
 
-This part is based on [Backpropagation calculus](https://www.3blue1brown.com/lessons/backpropagation-calculus).
 
 Initially, all the weights in all layers of the neural network are initialized with random values. 
 
-When the Sigmoid activation function is used, Xavier initialization works well. Normal Xavier initialization (besides normal Xavier initialization there is also a uniform one that is calculates slightly differently) uses a Gaussian probability distribution with a mean of 0 and a standard deviation of $\sqrt{\frac{2}{I^{L} + N^{L}}}$, where _I<sup>L</sup>_ is the size of the input to layer _L_ and _N<sup>L</sup>_ is the number of neurons in the layer _L_ (size of the output of the layer). When the ReLU activation function is used, He initialization works well. He initialization uses a Gaussian probability distribution with a mean of 0 and a standard deviation of $\sqrt{\frac{2}{I^{L}}}$, where _I<sup>L</sup>_ is the size of the input to layer _L_.
+Normal Xavier initialization (besides normal Xavier initialization there is also a uniform one that is calculates slightly differently) uses a Gaussian probability distribution with a mean of 0 and a standard deviation of $\sqrt{\frac{2}{I^{L} + N^{L}}}$, where _I<sup>L</sup>_ is the size of the input to layer _L_ and _N<sup>L</sup>_ is the number of neurons in the layer _L_ (size of the output of the layer). 
+
+He initialization uses a Gaussian probability distribution with a mean of 0 and a standard deviation of $\sqrt{\frac{2}{I^{L}}}$, where _I<sup>L</sup>_ is the size of the input to layer _L_.
+
 
 $$
 \\ Xavier = N \left( 0, \sqrt{\frac{2}{I^{L} + N^{L}}} \right)
@@ -258,6 +260,11 @@ $$
 $$
 \\ He = N \left( 0, \sqrt{\frac{2}{I^{L}}} \right)
 $$
+
+
+When the Sigmoid activation function is used, input values are squashed into the range between 0 and 1. This nonlinearity can lead to vanishing gradients, making it difficult for backpropagation to effectively update the network's weights. Xavier initialization addresses this issue by keeping the variance of activations and gradients stable across layers, improving signal flow during training.
+
+In contrast, the ReLU activation function zeroes out all negative inputs, effectively “killing” half of the signal. To compensate for this drop in signal strength, He initialization uses a larger variance than Xavier. This helps maintain the flow of information through the network and ensures more stable training with ReLU-activated layers.
 
 
 C++ has a built-in pseudo-random generator that produces uniformly distributed random values. The Box-Muller transform can efficiently transform them into Gaussian distributed random numbers. It produces two independent random numbers _N<sub>1</sub>_ and _N<sub>2</sub>_ from two independent uniformly distributed random numbers _U<sub>1</sub>_ and _U<sub>2</sub>_ in the interval (0, 1), but we only need one of them.
@@ -290,6 +297,10 @@ The another would be $N_{2} = \sqrt{-ln (U_{1}))} \cdot sin (2 \cdot \pi \cdot U
 
 
 Biases are usually set to 0.
+
+
+This part is based on [Backpropagation calculus](https://www.3blue1brown.com/lessons/backpropagation-calculus).
+
 
 At this point, the results that the neural network produces are, well, pretty random. The neural network must be trained first with a set of patterns belonging to already known categories. The idea of training on each of the known input patterns is to minimize the difference (or the error) between the expected result and the result that the neural network actually produced. To assess the error of a single pattern, we’ll use a variant of the MSE function (mean squared error):
 
