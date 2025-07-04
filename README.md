@@ -67,6 +67,9 @@ $$
 $$
 
 
+![Sigmoid, ReLU](af.jpg)
+
+
 The size of the input, the weight matrix, the output, and bias vary in each layer.
 
 ![Neural Network](nn.png)
