@@ -493,7 +493,7 @@ Similary we can calculate $\frac{\partial E}{\partial bias^{L}}$. We use the sam
 >
 >
 > $$
-> \\ delta_{[i]}^{L} = \sum_{n=0}^{N^{L+1}-1} \left( delta_{[n]}^{L+1} \cdot weight_{[n][i]}^{L+1} \right) \cdot {af'}_{[i]}^{L} \ ; \ i \ ∈ \ [0, N^{Loutput}) 
+> \\ delta_{[i]}^{L} = \sum_{n=0}^{N^{L+1}-1} \left( delta_{[n]}^{L+1} \cdot weight_{[n][i]}^{L+1} \right) \cdot {af'}_{[i]}^{L} \ ; \ i \ ∈ \ [0, N^{L}) 
 > $$
 >
 > Updating _**weight<sup>L</sup>**_ is the same as for output layer:
