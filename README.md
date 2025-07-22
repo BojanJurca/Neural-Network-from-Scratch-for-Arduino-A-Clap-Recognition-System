@@ -1,5 +1,5 @@
 
-# Clap Recognition Using a Neural Network from Scratch (C++ for Arduino)
+# Neural Network from Scratch (C++ for Arduino) - Clap Recognition
 
 Using a neural network for clap recognition might seem like overkill, but it was an exciting challenge to implement. Since this task isn’t overly demanding, Arduino boards can handle it quite well. My goal was to create a system that detects claps and toggles an LED accordingly.
 
