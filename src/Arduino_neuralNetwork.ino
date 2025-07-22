@@ -114,7 +114,7 @@
         //    or 
         // train the neural network with training patterns
 
-        /*
+        /**/
                 // import trained model
 
                 cout << "\n----- Importing trained model -----\n\n";
@@ -128,9 +128,9 @@
                                                         -1095940337,1040433038,-1106748102,1068392508,-1065800384,1075926285,-1064933301,1081760402,-1095707286,1067178248,1042954168,-1064422411,-1082853035,1066316497,-1076948023,1082536966,
                                                         -1075062161,1082440538,-1064510678,1052674815,-1080046979,1033864988,1082549200,1057094739,-1096518692,-1097359117,1054632022};
                 neuralNetwork = model;
-        */
-        
         /**/
+        
+        /*
         
                 // train the neural network - you can do this on bigger computer, doesn't have to be an Arduino
 
@@ -193,7 +193,7 @@
 
                 // export trained model
                 cout << "\ntrained model: " << neuralNetwork << endl;
-        /**/
+        */
         
      
         cout << "\n----- Clap recognition system is ready -----\n\n";
