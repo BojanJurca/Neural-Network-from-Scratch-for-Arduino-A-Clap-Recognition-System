@@ -417,7 +417,7 @@ Similary we can calculate $\frac{\partial E}{\partial bias^{Loutput}}$. _E_ is a
 > $$
 >
 >
-> Considering that $\frac{\partial E}{\partial weight_{[n][i]}^{Loutput}} = delta_{[n]}^{Loutput}⋅af_{[n]}^{Loutput}$ and $af_{[n]}^{Loutput-1}=input_{[n]}^{Loutput}$ we can update _**weight<sup>Loutput</sup>**_:
+> Considering that $\frac{\partial E}{\partial weight_{[n][i]}^{Loutput}} = delta_{[n]}^{Loutput}⋅af_{[i]}^{Loutput-1}$ and $af_{[i]}^{Loutput-1}=input_{[i]}^{Loutput}$ we can update _**weight<sup>Loutput</sup>**_:
 > 
 >
 > $$
