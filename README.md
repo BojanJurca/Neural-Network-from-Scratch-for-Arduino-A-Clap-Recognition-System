@@ -217,20 +217,22 @@ The following training code is a little oversimplified but works well for demons
     // as Arduino code is portable to standard C++.
 
     #define epoch 1000 // choose the right number of training iterations so the model gets trained but not overtrained
-    for (int _ = 0; _ < epoch; _++) {
+    for (int trainingIteration = 0; trainingIteration < epoch; trainingIteration++) {
         // normally we would need like 1.000 training patterns
+
+        float errorOverAllPatterns = 0;
 
                                                             //     .--- tell neuralNetwork that the pattern belongs to category 0 (0 is the index of output vector that designates category 0)
                                                             //     |
-        neuralNetwork.backwardPropagation ( { 1, 2, 6, 18, 20 }, { 1, 0, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 0
+        errorOverAllPatterns += neuralNetwork.backwardPropagation ( { 1, 2, 6, 18, 20 }, { 1, 0, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 0
 
                                                             //        .--- tell neuralNetwork that the pattern belongs to category 1 (1 is the index of output vector that designates category 1)
                                                             //        |    
-        neuralNetwork.backwardPropagation ( { 1, 2, 25, 3, 1 },  { 0, 1, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 1
+        errorOverAllPatterns += neuralNetwork.backwardPropagation ( { 1, 2, 25, 3, 1 },  { 0, 1, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 1
 
                                                             //           .--- tell neuralNetwork that the pattern belongs to category 2 (2 is the index of output vector that designates category 2)
                                                             //           |    
-        neuralNetwork.backwardPropagation ( { 19, 10, 3, 2, 1 }, { 0, 0, 1 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 2
+        errorOverAllPatterns += neuralNetwork.backwardPropagation ( { 19, 10, 3, 2, 1 }, { 0, 0, 1 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 2
     }
 
     // export trained model as C++ int32_t initializer list
@@ -238,6 +240,12 @@ The following training code is a little oversimplified but works well for demons
 ```
 
 Training the neural network involves setting weights and biases using training patterns at the input and expected results at the output. For each given pattern and expected result, an error is assessed at the output layer, and the weights and biases of the output layer are adjusted to minimize the error. Then, the same process is applied to the previous layer, and so on. This is why the process is called backward propagation—it propagates the error at the output layer back to the previous layers.
+
+With repeating training iterations the error gets smaller. The picture shows a typical decrease of the error during the training process.
+
+
+![Error during training](training.jpg)
+
 
 Training may be too demanding for Arduino boards, but you can do it on bigger machines, export the trained model there and import it to Arduino. This is why _compatibility.h_ library is added, to let Arduino code compile in standard C++ and the other way arround.
 
