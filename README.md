@@ -1,14 +1,15 @@
 
-# Neural Network from Scratch (C++ for Arduino) - Clap Recognition
+# Neural Network from Scratch (C++ for Arduino) - A Clap Recognition System
 
-Using a neural network for clap recognition might seem like overkill, but it was an exciting challenge to implement. Since this task isn’t overly demanding, Arduino boards can handle it quite well. My goal was to create a system that detects claps and toggles an LED accordingly.
+
+Ever dreamed of building a clap recognition system that stays focused—even when a dog barks or dishes clatter in the background? Lightweight neural network delivers 97% accurate clap detection, all while running efficiently on Arduino boards without straining their resources.
 
 
 ## What You Need
 
 The system is built of the following components:
 
- - Hardware: An Arduino board (including AVR boards) with an analog microphone and LED.
+ - Hardware: an Arduino board (including AVR boards like Mega 2560) with an analog microphone and LED.
 
  - Sound sampling of audio input.
 
@@ -39,7 +40,9 @@ Clap recognition, including its neural network is not very demanding. An Arduino
 A clap lasts around 7 ms. In this time we want to capture 256 samples which gives a sampling rate of 35 kHz. 
 It would be better to sample 10 ms with 40 kHz but due to limited processing power 7 ms with 35 kHz will do just fine.
 
+
 ## Neural Network
+
 
 ### The basics
 
@@ -241,7 +244,7 @@ The following training code is a little oversimplified but works well for demons
 
 Training the neural network involves setting weights and biases using training patterns at the input and expected results at the output. For each given pattern and expected result, an error is assessed at the output layer, and the weights and biases of the output layer are adjusted to minimize the error. Then, the same process is applied to the previous layer, and so on. This is why the process is called backward propagation—it propagates the error at the output layer back to the previous layers.
 
-With repeating training iterations the error gets smaller. The picture shows a typical decrease of the error during the training process.
+With repeated training iterations, the error typically decreases. However, more training doesn't always lead to better classification accuracy. A neural network can become overtrained—meaning it learns the training patterns too precisely, resulting in minimal error on known data but poor generalization to new inputs. This is not the desired outcome. The graph illustrates a typical error reduction trend during the training process.
 
 
 ![Error during training](training.jpg)
@@ -440,6 +443,7 @@ Similary we can calculate $\frac{\partial E}{\partial bias^{Loutput}}$. _E_ is a
 > \\ bias_{[n]}^{Loutput} -= learningRate \cdot {delta_{[n]}^{Loutput}} \ ; \ learningRate \ is \ tipically \ 0.01 \ ; \ n \ ∈\ [0, N^{Loutput})
 > $$
 >
+
 
 
 
@@ -659,36 +663,41 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
 
 ## Clap audio recording
 
+Proper preparation of input data is crucial for effective neural network performance. If we had built a convolutional neural network (CNN), we could feed it raw audio recordings directly, allowing the CNN to learn spatial and temporal patterns on its own. However, with a fully connected neural network like ours, a different strategy is required. Instead of raw data, we must extract a set of distinctive features from the sound recording—features that the network can then use for accurate classification.
+
 A clap has a distinctive shape on the oscilloscope, characterized by a loud, rapidly fading high-frequency sound. The most significant condition – a high amplitude of the sound is easily checked before the other features get estimated. These features are extracted or calculated from audio recording and (hopefully) distinguish claps from other loud sounds. Here is an example of a clap audio recording and its features. These features serve as the input to our neural network.
 
 
 ![Clap characteristics](characteristics.jpg)
 
 
-The sound is sampled with 256 samples at 35.74 kHz rate which gives 7.1 ms of audio recording. This is enough for a clap.
+The sound is sampled using 256 samples at a rate of 35.74 kHz, resulting in approximately 7.1 milliseconds of audio. This duration is sufficient to reliably detect a clap.
+
+Some features can be extracted directly from the time-domain signal, as the waveform varies over time.
 
 
-### Zero Crossing
+### Zero Crossings
 
-The sound frequency can be roughly estimated by counting how many times the recorded signal crosses the time axis. The higher the frequency, the higher the zero-crossing rate. Typically, around 20 zero-crossings in 7 milliseconds can be expected for a clap.
-
-
-### Sound Energy Pattern
-
-A clap is a rapidly fading sound. We can expect that most of the energy will be released at the beginning of a clap and will decrease over time. The energy released by the sound can be estimated by RMS (root mean square) $RMS = \sqrt{\frac{1}{n} \cdot \sum_{i = 1}^{n}} sample_{i}^{2}$. 
+Zero crossings are calculated by counting how many times the signal crosses the time axis. For a typical clap, around 20 zero crossings can be expected within a 7-millisecond window.
 
 
 ### Linear Regression Coefficient
 
-We can estimate how fast the clap sound is fading by calculating the linear regression coefficient of the absolute values of audio recording samples. 
+To estimate how quickly the sound energy decays, we calculate the linear regression coefficient of the signal’s power. Instead of using raw power values, we apply a logarithmic transformation, which better reflects human perception of loudness. This also ensures that louder segments of the recording don’t dominate the analysis, allowing quieter parts to contribute meaningfully.
 
 
-### Frequency pattern
+More distinctive features can be extracted from the frequency domain of the sound signal. Since the focus here is on the mathematical modeling and neural network implementation, we’ll only briefly outline the frequency-based feature extraction process.
 
-Frequencies contained in the audio recording are calculated with FFT (Fast Fouriere Transform). The whole frequency range is then divided into four subranges (0-500 Hz, 500 Hz-2.8 kHz, 2.8-7 kHz, 7-17.87 kHz).
+To analyze the frequency content, we apply a Fourier transform. This technique reconstructs the signal by combining sine waves of various frequencies and magnitudes, revealing which frequencies are present and how strongly they contribute. Because our signal is digitized, we use the discrete version—known as the Discrete Fourier Transform (DFT). Efficient algorithms such as the Fast Fourier Transform (FFT) compute the DFT in 𝑂(𝑛 log 𝑛) time.
+
+Human perception of frequency, like loudness, is nonlinear. We perceive pitch on a logarithmic scale. Therefore, the frequency magnitudes are mapped to the mel scale (short for “melody”), which better aligns with how we hear sound. Mel filters are then applied to resample the frequency magnitudes from a linear to a mel scale. The resulting magnitude values are also transformed logarithmically to compress dynamic range and emphasize perceptually relevant features.
+
+The number of mel filters can vary depending on the application. For clap recognition, six mel filters are typically sufficient.
 
 
-## Neural Network vs. Rule-Based Decisions
+### Mel filters
+
+Mel filters are triangular filters distributed evenly across the full range of the mel scale. Because the mel scale is logarithmic, this means their coverage across the linear frequency scale is uneven. Each mel filter is defined by three points: a start, a peak, and an end. To construct six mel filters, we need to calculate eight mel frequency points—these serve as the boundaries and peaks for the filters.
 
 
-Once the characteristics have been calculated, we can consider whether a neural network outperforms traditional hard-coded rules. The answer is: not necessarily. It tends to make different decisions, but they are not inherently better. With the addition of more input features and a broader range of test cases, we could likely improve the performance of the neural network.
+![Mel filters](mel.jpg)
