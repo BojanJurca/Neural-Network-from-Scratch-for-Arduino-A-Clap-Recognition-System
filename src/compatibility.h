@@ -2,7 +2,7 @@
 
     compatibility.h
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Clap-Recognition-Using-a-Neural-Network-from-Scratch-Cpp-for-Arduino
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System
 
     The purpose of this library is to provide compatibility between Arduino and standard C++, allowing sketches 
     to be compiled on more powerful machines. This enables time-intensive tasks, such as neural network training, 

@@ -2,22 +2,72 @@
 
     Arduino_neuralNetwork.ino
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Clap-Recognition-Using-a-Neural-Network-from-Scratch-Cpp-for-Arduino
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System
 
     Sound sampling and clap recognition using neural network on Arduino Mega 2560
 
-    Bojan Jurca, May 22, 2025
+    Bojan Jurca, Sep 9, 2025
 
 */
 
 
+// input: sampling definitions
 
-#include "compatibility.h" // Arduino <-> standard C++ compatibility
+    #define microphonePin 0             // the A/D pin you microphone is connected to the controller
+    #define signalMid 511               // obtained by measuring the silence mean value of a particular microphone
+    #define signalTreshold 350          // the treshold when the sound gets loud enough to indicate it may be a clap
+    #define signalOverloaded 509        // obtained by observing the microphone signal - this is when the signal gets overloaded
+    #define sampleCount 256             // 256 samples sampled with 35.75 kHz gives 7.16 ms of the sound
+    #define samplingFrequency 35750.0   // sampling frequency is determined by setting A/D prescale bits
+    
+// output: LED
+
+    #define ledPin 2                    // the pin your LED is connected
+    
+// discrete Fourier transform
+
+    #define NyquistFrequency ( samplingFrequency / 2 )
+    #define distinctFftCoeficients ( sampleCount / 2 + 1 )
+
+// mel filters
+
+    #define melFilterCount 6 // it seems that 6 gives good results but try different numbers as well
+
+// sound pattern features
+
+    #define featureCount ( 2 + melFilterCount ) // feature extracted from sound recordings as the input to the neural network
+    // feature [0]              <- zerro crossings - the number the signal crosses time axes
+    // feature [1]              <- linear regression coeficient - how fast the signal amplitude is dropping    
+    // feature [2, ...]         <- mel filters
+
+// include a small compatibility.h library with which the same code will run on Arduino Mega 2560 and desktop computer as well
+
+    #include "compatibility.h" // Arduino <-> standard C++ compatibility
+
+// void extractFeaturesFromSoundRecording (float feature [featureCount], int soundRecording [sampleCount]);
+
+    #include "dsp.h"
+
+
+// ----- the neural network -----
+ 
+    #include "neuralNetwork.hpp"
+    
+    //                    .--- the number of neurons in the first layer - the number of input sound features in our case
+    //                    |                .--- second layer activation function
+    //                    |                |    .--- the number of neurons the second layer 
+    //                    |                |    |                             .--- output layer activation function
+    //                    |                |    |                             |      .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes (clap or not a clap in our case)
+    //                    |                |    |                             |      |
+    neuralNetworkLayer_t<featureCount, Sigmoid, 5, /* add more if needed */ Sigmoid, 2> neuralNetwork; // this topology gives good results but try other topologies as well 
+    
+    // at this point neuralNetwork is initialized with random weights and biases and it is ready for training
+    // - you can either start training it and export the trained model when fiished
+    // - or you can load already trained model that is cappable of making usable outputs 
+
 
 // ----- the input -----
 
-    #define microphonePin 0
-    
     // non-blocking reading of analog microphone with 35.75 kHz sampling frequency, see: https://www.gammon.com.au/adc
     bool ADCinProgress;
     void analogReadBegin () { 
@@ -30,11 +80,6 @@
             return ADC; // read the result
     }
     
-    #define soundMid 511        // obtained by measuring the silence mean value of a particular microphone
-    #define soundTreshold 350   // the treshold when the sound gets loud enough to indicate it may be a clap
-    #define soundOverloaded 509 // obtained by observing the microphone signal - this is when the signal gets overloaded
-    #define rawSamplesCount 256 // 256 samples sampled with 35.75 kHz gives 7.16 ms of the sound
-
     // queue buffer to capture the signal
     template<typename T>
         class soundQueue_t {
@@ -44,9 +89,9 @@
         
             public:
                 void push (int e) {
-                        if (abs (__buf__ [__p__]) >= soundOverloaded)
+                        if (abs (__buf__ [__p__]) >= signalOverloaded)
                                 __overloadCount__ --;
-                        if (abs (e) >= soundOverloaded)
+                        if (abs (e) >= signalOverloaded)
                                 __overloadCount__ ++;
                     __buf__ [__p__] = e;
                     __p__ += 1; // __p__ = (__p__ + 1) % 256;
@@ -64,140 +109,136 @@
         soundQueue_t<int> rawSamples;
 
 
-// ----- the output -----
-
-    #include "fft.h"
-
-    // we'll use two LEDs triggered by the clap - one by neural network, the other by rules - just for comparison of both approaches 
-    #define ruleBasedLedPin 4
-    #define neuralNetworkBasedLedPin 2
-
-
-// ----- features extracted from clap sound as input to the neural network
-
-    #define featureCount 8 // we'll use 8 feature extracted from clap sound as the input to the neural network
-    // feature [0]              <- zerro crossings - the number the signal crosses time axes
-    // feature [1]              <- linear regression coeficient - how fast the signal amplitude is dropping    
-    // feature [2, 3]           <- energy - signal energy in te first and the second half of audio recording
-    // feature [4, 5, 6, 7]     <- maginudes in 4 frequency bands
-
-
-// ----- neural network -----
- 
-
-    #include "neuralNetwork.hpp"
-    
-    //                    .--- the number of neurons in the first layer - the number of input sound features in our case
-    //                    |              .--- second layer activation function
-    //                    |              |    .--- the number of neurons the second layer 
-    //                    |              |    |                             .--- output layer activation function
-    //                    |              |    |                             |      .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes (clap or not a clap in our case)
-    //                    |              |    |                             |      |
-    neuralNetworkLayer_t<featureCount, ReLU, 11, /* add more if needed */ Sigmoid, 2> neuralNetwork;
-
-    
-    // at this point neuralNetwork is initialized with random weights and biases and it is ready for training
-    // - you can either start training it and export the trained model when fiished
-    // - or you can load already trained model that is cappable of making usable outputs 
-
-
-#include "claps.h"
-#include "other_sounds.h"
-
-// ----- setup, training the neural network or just loading already trained model -----
+// ----- setup, training the neural network or just loading already trained model, input and output initialization -----
 
     void setup () {
         cinit (); // instead of Serial.begin (9600); or Serial.begin (115200);
-
+        
+        // at this point neuralNetwork is initialized with random weights and biases and it is ready for training
+        // - you can either start training it and export the trained model when fiished
+        // - or you can load already trained model that is cappable of making usable outputs 
+        
 
         // load trained model 
-        //    or 
-        // train the neural network with training patterns
 
         /**/
                 // import trained model
 
-                cout << "\n----- Importing trained model -----\n\n";
+                cout << "importing trained model\n";
 
-                const int32_t model [] PROGMEM =        {-1102000500,-1094027232,1067359819,-1107615579,-1075348309,1067875840,1063310163,1049995543,1076519184,-1085001279,-1066981228,1075712476,-1073841140,-1095825720,1071055885,1065862261,
-                                                        1058443171,-1096072972,1061262024,-1089628049,-1075247815,1075171395,-1090195372,-1095038395,-1088057270,1070012757,-1093271376,1074647097,1080688246,-1067216272,1068552050,1047563678,
-                                                        1059499520,-1084466895,1065874458,-1075538078,-1067529226,1082844961,1041376978,-1089398971,1034207196,-1096448109,-1098658344,1035086773,1016397219,-1109503176,1049408262,-1125049158,
-                                                        1068932400,-1079205083,1054946771,-1092715020,-1089633612,1068553930,1057583057,1050939432,1053390543,1049545560,1025518432,1058845790,-1106581644,1049875482,1019329447,1047160999,
-                                                        1078159979,1034828790,-1066375831,1076963300,-1072682907,-1079190164,1068666699,1065940226,1053886155,1050510222,-1091070981,1051312640,1063652597,-1091281421,1027861246,1049449145,
-                                                        -1091294220,1052287542,1039632578,-1123452964,1007740464,-1101371606,1032521949,-1085763048,-1091687296,-1093894772,-1091123669,1066696221,-1087693504,0,-1132126851,-1123627023,
-                                                        -1095940337,1040433038,-1106748102,1068392508,-1065800384,1075926285,-1064933301,1081760402,-1095707286,1067178248,1042954168,-1064422411,-1082853035,1066316497,-1076948023,1082536966,
-                                                        -1075062161,1082440538,-1064510678,1052674815,-1080046979,1033864988,1082549200,1057094739,-1096518692,-1097359117,1054632022};
-                neuralNetwork = model;
+                const int32_t model [] PROGMEM = { 1088934982,1056125554,1060564156,-1087099479,-1066412161,-1074884735,-1067327234,1057867316,1094637831,-1090546581,-1067851532,1075940152,1073899499,1065228311,1079703855,-1060683450,
+                                                   1082809745,1059553803,1076080741,-1080144655,-1069457469,-1073204993,-1064810862,1071951074,-1069875473,1028319942,1074040879,-1082136736,-1073597770,-1079754927,-1076530130,1076574819,
+                                                   -1067667764,1033151989,1062593514,-1085613887,-1080690817,-1090659372,-1080401428,1071313246,1043351735,-1063435984,1063655380,1070507908,1065360061,-1059851737,1091164282,-1063203450,
+                                                   -1069429137,-1069139415,1086766935,-1056190823,1085179138,1079357277,1072314658,-1081688677,1067143074};
+               neuralNetwork = model;
+                
         /**/
         
         /*
-        
-                // train the neural network - you can do this on bigger computer, doesn't have to be an Arduino
+            // train the neural network with training patterns, this is better done on bigger computer, 
+            // it doesn't have to be an Arduino
+            
+            #include "trainingRecordings.h"
+            
+            cout << "training the neural network\n";
 
+                // extract features from training audio_recordings
+                
+                float clapFeatures [clapRecordingCount][featureCount];
+                
+                cout << "    extracting " << featureCount << " features from " << clapRecordingCount << " claps\n";
+                
+                for (int i = 0; i < clapRecordingCount; i++) {
+                    extractFeaturesFromSoundRecording (clapFeatures [i], clapRecording [i]);
+                    // cout << "   {";
+                    // for (size_t f = 0; f < featureCount; f++) {
+                    //         if (f)
+                    //                 cout << ",";
+                    //         char buf [25];
+                    //         #ifdef ARDUINO_ARCH_AVR // Assuming Arduino Mega or Uno
+                    //                 dtostrf (clapFeatures [i][f], 1, 4, buf);
+                    //         #else
+                    //                 snprintf (buf, sizeof (buf), "%.4f", clapFeatures [i][f]);
+                    //         #endif
+                    //         cout << buf << "f";
+                    // }
+                    // cout << "},\n";
+                }
 
-                cout << "\n----- Training -----\n\n";
-        
+                float otherFeatures [otherRecordingCount][featureCount];
+                
+                cout << "    extracting " << featureCount << " features from " << otherRecordingCount << " other sounds\n";
+                
+                for (int i = 0; i < otherRecordingCount; i++) {
+                    extractFeaturesFromSoundRecording (otherFeatures [i], otherRecording [i]);
+                    // cout << "   {";
+                    // for (size_t f = 0; f < featureCount; f++) {
+                    //         if (f)
+                    //                 cout << ",";
+                    //         char buf [25];
+                    //         #ifdef ARDUINO_ARCH_AVR // Assuming Arduino Mega or Uno
+                    //                 dtostrf (otherFeatures [i][f], 1, 4, buf);
+                    //         #else
+                    //                 snprintf (buf, sizeof (buf), "%.4f", otherFeatures [i][f]);
+                    //         #endif
+                    //         cout << buf << "f";
+                    // }
+                    // cout << "},\n";                
+                }
 
-                size_t clapCount = sizeof (clap) / (sizeof (float) * featureCount);
-                // size_t snapCount = sizeof (snap) / (sizeof (float) * featureCount);
-                size_t otherSoundCount = sizeof (otherSound) / (sizeof (float) * featureCount);
+                constexpr int setCount = min (clapRecordingCount, otherRecordingCount);
 
-                cout << "\ntraining\n";            
+                cout << "        " << setCount << " of clap feature patterns\n";
+                cout << "        " << setCount << " of other sound feature patterns\n";
+                cout << "    roughly 80 % of them will be used for training and roughly 20 % for testing\n\n";
 
                 // This part, including testing different typologies, can be done more efficiently on larger computers and not necessarily on a controller,
                 // as Arduino code is portable to standard C++.
 
-                #define epoch 10000 // choose the right number of training iterations so the model gets trained but not overtrained
-                for (int step = 0; step < epoch; step++) {
+                #define epoch 6201 // choose the right number of training iterations so the model gets trained but not overtrained
+                for (int trainingIteration = 0; trainingIteration < epoch; trainingIteration++) {
                         float errorOverAllPatterns = 0;
                         
-                        for (size_t i = 0; i < clapCount; i++) 
-                                if (i % 6 != 0) // leave every 5th pattern for testing
-                                        errorOverAllPatterns += neuralNetwork.backwardPropagation (clap [i], {1, 0}); // index 0 = clap
+                        for (size_t i = 0; i < setCount; i++) {
+                                if (i % 5 != 0) { // leave every 5th pattern for testing
+                                        errorOverAllPatterns += neuralNetwork.backwardPropagation (clapFeatures [i], {1, 0});   // index 0 = clap
+                                        errorOverAllPatterns += neuralNetwork.backwardPropagation (otherFeatures [i], {0, 1});  // index 1 = another sound
+                                }
+                        }
 
-                        for (size_t i = 0; i < otherSoundCount; i++) 
-                                if (i % 6 != 0) // leave every 5th pattern for testing
-                                        errorOverAllPatterns += neuralNetwork.backwardPropagation (otherSound [i], {0, 1}); // index 1 = another sound
-
-                        cout << "   step " << step << " error over all patterns = " << errorOverAllPatterns << endl;
+                        if (trainingIteration % 100 == 0) {
+                            // test success
+                            int clapsTested = 0;
+                            int clapsRecognized = 0;
+                            for (size_t i = 0; i < setCount; i++) 
+                                    if (i % 5 == 0) { // take every 5th pattern for testing
+                                        clapsTested ++;
+                                        auto probability = neuralNetwork.forwardPass (clapFeatures [i]);
+                                        if (probability [0] > 0.5) // index 0 = clap
+                                            clapsRecognized ++;
+                                    }
+                            int otherTested = 0;
+                            int otherRecognized = 0;
+                            for (size_t i = 0; i < setCount; i++) 
+                                    if (i % 5 == 0) { // take every 5th pattern for testing
+                                        otherTested ++;
+                                        auto probability = neuralNetwork.forwardPass (otherFeatures [i]);
+                                        if (probability [1] > 0.5) // index 1 = other sound
+                                            otherRecognized ++;
+                                    }                            
+                                        
+                            cout << "    iteration " << trainingIteration << "    error over all patterns = " << errorOverAllPatterns << "   classification accuracy = " << (float) (clapsRecognized +  otherRecognized) / (clapsTested + otherTested) * 100 << "   (claps " << (float) clapsRecognized / clapsTested * 100 << " %   other sounds " << (float) otherRecognized / otherTested * 100 << " %) " << endl;
+                            // cout << trainingIteration << "   " << errorOverAllPatterns << "   " << (float) (clapsRecognized +  otherRecognized) / (clapsTested + otherTested) * 100 <<endl;
+                        }
                 }
 
-                // test success
-                
-                cout << "\ntesting clap recognition\n";        
-                for (size_t i = 0; i < clapCount; i++) 
-                        if (i % 5 == 0) { // take every 5th pattern for testing
-                            cout << "   clap [" << i << "]: ";
-                            auto probability = neuralNetwork.forwardPass (clap [i]);
-                            if (probability [0] > 0.5) // index 0 = clap
-                                cout << "OK,    probabilities: ( ";
-                            else
-                                cout << "WRONG, probabilities: ( ";
-                            for (auto p : probability)
-                                cout << p << " ";
-                            cout << ")\n";
-                        }
-                cout << "\ntesting other sounds\n";   
-                for (size_t i = 0; i < otherSoundCount; i++) 
-                        if (i % 5 == 0) { // take every 5th pattern for testing
-                            cout << "   otherSound [" << i << "]: ";
-                            auto probability = neuralNetwork.forwardPass (otherSound [i]);
-                            if (probability [1] > 0.5) // index 0 = clap
-                                cout << "   OK,    probabilities: ( ";
-                            else
-                                cout << "   WRONG, probabilities: ( ";
-                            for (auto p : probability)
-                                cout << p << " ";
-                            cout << ")\n";                                    
-                        }
 
                 // export trained model
-                cout << "\ntrained model: " << neuralNetwork << endl;
+                cout << "\ntrained model = " << neuralNetwork << endl;
         */
         
-     
-        cout << "\n----- Clap recognition system is ready -----\n\n";
 
+        cout << "clap recognition system is ready\n\n";
 
         // initialize the input: increase analogReading speed by changing prescale bits and make AD conversion non blocking (https://www.gammon.com.au/adc)
         ADCSRA =  bit (ADEN);   // turn ADC on
@@ -217,12 +258,9 @@
         // start the first AD conversion
         analogReadBegin ();
         
-        
         // initialize the output
-        pinMode (ruleBasedLedPin, INPUT | OUTPUT);
-        digitalWrite (ruleBasedLedPin, 0);
-        pinMode (neuralNetworkBasedLedPin, INPUT | OUTPUT);
-        digitalWrite (neuralNetworkBasedLedPin, 0);        
+        pinMode (ledPin, INPUT | OUTPUT);
+        digitalWrite (ledPin, 0);
     }
 
 
@@ -231,7 +269,7 @@
 
     void loop () {
     
-        // measure soundMid in silence
+        // measure signalMid in silence
         /*
                 static unsigned long cnt = 0;
                 static unsigned long long sum = 0;
@@ -239,21 +277,14 @@
                 sum += analogReadEnd ();
                 analogReadBegin ();
                 if (++cnt == 10000) {
-                        Serial.print ("soundMid = "); Serial.println ( (float) sum / (float) cnt );
+                        Serial.print ("signalMid = "); Serial.println ( (float) sum / (float) cnt );
                         cnt = 0;
                         sum = 0;
                 }
                 return;
         */
-        
-        // see what microphone is producing with Arduino Serial Plotter
-        /*
-                cout << analogReadEnd () - soundMid << endl;
-                analogReadBegin ();
-                return;
-        */
 
-        rawSamples.push ( analogReadEnd () - soundMid ); // wait for previous conversion to finish and return the result
+        rawSamples.push ( analogReadEnd () - signalMid ); // wait for previous conversion to finish and return the result
         analogReadBegin (); // start the next AD conversion immediatelly
 
         // measure sampling frequency
@@ -268,141 +299,34 @@
                 return;
         */
 
-        // if ( rawSamples.overloaded () > 1 && rawSamples.overloaded () < 25 /* rawSamples.front () > soundTreshold */) {
-        if (abs (rawSamples.front ()) >= soundTreshold && rawSamples.overloaded () == 0) {
+        if (abs (rawSamples.front ()) >= signalTreshold && rawSamples.overloaded () == 0) {
 
-                // output rawSamples
-                        /*
-                        cout << "SIGNAL (time = 7.1 ms)";
-                        for (int i = 0; i < rawSamples.size (); i++)
-                                cout << "," << rawSamples [i];
-                        cout << endl;
-                        */
-
-                // calculate frequencies - FFT
-                        complex<float> fftInput [rawSamplesCount];
-                        complex<float> fftOutput [rawSamplesCount];
-                        for (int i = 0; i < rawSamplesCount; i++)
-                                fftInput [i] = { (float) rawSamples [i], 0.f };
-                        fft (fftOutput, fftInput);
-
-                // output frequencies
-                        /*
-                        cout << "MAGNITUDE (frequences up to = 17.87 kHz)";
-                        for (int i = 0; i < rawSamplesCount / 2; i++)
-                                cout << "," << abs (fftOutput [i]);
-                        cout << endl;
-                        */
-
-                // calculate the sound features that will be the input to the neural network
-                        float feature [featureCount] = {};
-                        // 0. ZCR
-                        for (int s = 1; s < rawSamples.size (); s++)
-                                if (signbit (rawSamples [s - 1]) != signbit (rawSamples [s])) 
-                                        feature [0] ++;
-                        // 1. linear regression coeficient
-                        int n = 0;
-                        float sumX = 0;
-                        float sumY = 0;
-                        float sumXY = 0;
-                        float sumX2 = 0;                
-                        for (int i = 0; i < rawSamples.size (); i++) {                
-                                float y = abs (rawSamples [i]);
-                                float x = i;
-                                n ++;
-                                sumX += x;
-                                sumY += y;
-                                sumXY += x * y;
-                                sumX2 += x * x;
-                        }
-                        feature [1] = (sumXY * n - sumX * sumY) / (sumX2 * n - sumX * sumX);
-                        // 2, 3. energy in the first half and the second half of sound recording
-                        for (int i = 0; i < rawSamples.size () / 2; i++) 
-                                feature [2] += (float) rawSamples [i] * (float) rawSamples [i];
-                        feature [2] = sqrt (feature [2] / rawSamples.size () / 2);
-                        for (int i = rawSamples.size () / 2; i < rawSamples.size (); i++) 
-                                feature [3] += (float) rawSamples [i] * (float) rawSamples [i];
-                        feature [3] = sqrt (feature [3] / rawSamples.size () / 2);
-                        // 4, 5, 6, 7. magnitudes in frequency bands
-                        for (int i = 0; i < 5; i++) // 0 - 500 Hz
-                                feature [4] += abs (fftOutput [i]);
-                        for (int i = 5; i < 21; i++) // 500 Hz - 2.8 kHz
-                                feature [5] += abs (fftOutput [i]);
-                        for (int i = 21; i < 51; i++) // 2.8 - 7 kHz
-                                feature [6] += abs (fftOutput [i]);
-                        for (int i = 21; i < 51; i++) // 7 - 17.87 kHz
-                                feature [7] += abs (fftOutput [i]);
+            int soundRecording [sampleCount];
+            for (int i = 0; i < sampleCount; i++)
+                soundRecording [i] = rawSamples [i];
+            
+            float feature [featureCount];
+            extractFeaturesFromSoundRecording (feature, soundRecording);
+                /*
+            for (int i = 0; i < featureCount; i++)
+                cout << feature [i] << endl;
+                */
 
 
-                // ----- rule based decision: a clap or not a clap -----
-                        /*
-                        cout << "----- ZRC = " << feature [0] 
-                        << " LRC = " << feature [1]
-                        << " RMS = " << feature [2] << ", " << feature [3] // << " ratio: " << feature [3] / feature [2]
-                        << " FREQ = " << feature [4] << ", " << feature [5] << ", " << feature [6] << ", " << feature [7] 
-                        << " -----" << endl;
-                        */
+            // ask neural network what it thinks about these features
+            float p = neuralNetwork.forwardPass (feature) [0];
+            if (p > 0.5) {
+                    cout << "    it's a clap, p = " << p << endl;
+                    digitalWrite (ledPin, !digitalRead (ledPin));
+            } else {
+                    cout << "        not a clap, p = " << p << endl;
+            }
 
-                        cout << "rule says: ";
-                        bool err = false;
-                        if (feature [0] < 13)                                                                                           { err = true; cout << " ZRC too low."; }
-                        if (feature [0] > 39)                                                                                           { err = true; cout << " ZRC too high."; }
-                        if (feature [1] > -0.4)                                                                                         { err = true; cout << " LRC too high."; }; 
-                        if (feature [1] < -0.85)                                                                                        { err = true; cout << " LRC too low."; }; 
-                        if (feature [3] / feature [2] < 0.3 || feature [3] / feature [2] > 0.7)                                         { err = true; cout << " Wrong RMS pattern."; }; 
-                        if (feature [4] / feature [5] > 0.5 || feature [6] / feature [5] > 0.5 || feature [7] / feature [5] > 0.5)      { err = true; cout << " Wrong frequency pattern."; }; 
-                        if (err) {
-                                cout << " Not a clap." << endl;
-                        } else {
-                                cout << " it's a clap.\n";
-                                digitalWrite (ruleBasedLedPin, !digitalRead (ruleBasedLedPin));
-                        }
 
-                // ----- neural network based decision: a clap or not a clap -----
-                        // normalize ZCR
-                        feature [0] /= 40; 
-                        // normalize linear regression coeficient
-                        feature [1] = -feature [1]; 
-                        // normalize energy pattern
-                        float sumRMS = feature [2] + feature [3];
-                        feature [2] /= sumRMS;
-                        feature [3] /= sumRMS;
-                        // normalize frequency pattern
-                        float sumFFT = feature [4] + feature [5] + feature [6] + feature [7];
-                        feature [4] /= sumFFT;
-                        feature [5] /= sumFFT;
-                        feature [6] /= sumFFT;
-                        feature [7] /= sumFFT;                        
-
-                        float p = neuralNetwork.forwardPass (feature) [0];
-                        if (p > 0.5) {
-                                cout << "neural network says: it's a clap, p = " << p << endl;
-                                digitalWrite (neuralNetworkBasedLedPin, !digitalRead (neuralNetworkBasedLedPin));
-                        } else {
-                                cout << "neural network says: not a clap, p = " << p << endl;
-                        }
-
-                // output feature pattern as C++ initializer list - these lists are needed for neural network training
-                        /*
-                        cout << "features = {";
-                        for (size_t f = 0; f < featureCount; f++) {
-                                if (f)
-                                        cout << ",";
-                                char buf [25];
-                                #ifdef ARDUINO_ARCH_AVR // Assuming Arduino Mega or Uno
-                                        dtostrf (feature [f], 1, 4, buf);
-                                #else
-                                        snprintf (buf, sizeof (buf), "%.4f", feature [f]);
-                                #endif
-                                cout << buf << "f";
-                        }
-                        cout << "}\n";                
-                        */
-
-                delay (100); // wait before reading the next clap
-                rawSamples.clear ();
-                analogReadEnd ();
-                analogReadBegin ();
+            delay (100); // wait before reading the next clap
+            rawSamples.clear ();
+            analogReadEnd ();
+            analogReadBegin ();
         }
 
     }
