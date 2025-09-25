@@ -692,12 +692,12 @@ To analyze the frequency content, we apply a Fourier transform. This technique r
 
 Human perception of frequency, like loudness, is nonlinear. We perceive pitch on a logarithmic scale. Therefore, the frequency magnitudes are mapped to the mel scale (short for “melody”), which better aligns with how we hear sound. Mel filters are then applied to resample the frequency magnitudes from a linear to a mel scale. The resulting magnitude values are also transformed logarithmically to compress dynamic range and emphasize perceptually relevant features.
 
-The number of mel filters can vary depending on the application. For clap recognition, six mel filters are typically sufficient.
+The number of mel filters can vary depending on the application. For clap recognition, 20 mel filters work very well.
 
 
 ### Mel filters
 
-Mel filters are triangular filters distributed evenly across the full range of the mel scale. Because the mel scale is logarithmic, this means their coverage across the linear frequency scale is uneven. Each mel filter is defined by three points: a start, a peak, and an end. To construct six mel filters, we need to calculate eight mel frequency points—these serve as the boundaries and peaks for the filters.
+Mel filters are triangular filters distributed evenly across the full range of the mel scale. Because the mel scale is logarithmic, this means their coverage across the linear frequency scale is uneven. Each mel filter is defined by three points: a start, a peak, and an end. To construct 20 mel filters, we need to calculate 22 mel frequency points—these serve as the boundaries and peaks for the filters.
 
 
 ![Mel filters](mel.jpg)
