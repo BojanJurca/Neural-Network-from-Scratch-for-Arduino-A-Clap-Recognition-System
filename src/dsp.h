@@ -8,7 +8,7 @@
     Digital signal processing of audio recordings - extracting features from sounds.
     
 
-    Bojan Jurca, Sep 9, 2025
+    Bojan Jurca, Oct 10, 2025
 
 */
 
@@ -54,7 +54,7 @@
             fftInput [i] = { (float) soundRecording [i], 0.f };
         fft (fftOutput, fftInput);
         for (int i = 0; i < distinctFftCoeficients; i++)
-            magnitude [i] = abs (fftInput [i]);
+            magnitude [i] = abs (fftOutput [i]);
         
         calculateMelFilters (&feature [2], magnitude);
         

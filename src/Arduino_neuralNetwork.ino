@@ -6,7 +6,7 @@
 
     Sound sampling and clap recognition using neural network on Arduino Mega 2560
 
-    Bojan Jurca, Sep 9, 2025
+    Bojan Jurca, Oct 10, 2025
 
 */
 
@@ -31,7 +31,7 @@
 
 // mel filters
 
-    #define melFilterCount 6 // it seems that 6 gives good results but try different numbers as well
+    #define melFilterCount 20 // some good tested values: 6: 90% accuarcy, 10: 95% accuarcy, 18: 98% accuarcy, 20: 100% accuarcy
 
 // sound pattern features
 
@@ -56,10 +56,10 @@
     //                    .--- the number of neurons in the first layer - the number of input sound features in our case
     //                    |                .--- second layer activation function
     //                    |                |    .--- the number of neurons the second layer 
-    //                    |                |    |                             .--- output layer activation function
-    //                    |                |    |                             |      .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes (clap or not a clap in our case)
-    //                    |                |    |                             |      |
-    neuralNetworkLayer_t<featureCount, Sigmoid, 5, /* add more if needed */ Sigmoid, 2> neuralNetwork; // this topology gives good results but try other topologies as well 
+    //                    |                |    |                                    .--- output layer activation function
+    //                    |                |    |                                    |      .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes (clap or not a clap in our case)
+    //                    |                |    |                                    |      |
+    neuralNetworkLayer_t<featureCount, Sigmoid, 2, /* add more layers if needed */ Sigmoid, 2> neuralNetwork; // this topology gives good results but try other topologies as well 
     
     // at this point neuralNetwork is initialized with random weights and biases and it is ready for training
     // - you can either start training it and export the trained model when fiished
@@ -126,10 +126,10 @@
 
                 cout << "importing trained model\n";
 
-                const int32_t model [] PROGMEM = { 1088934982,1056125554,1060564156,-1087099479,-1066412161,-1074884735,-1067327234,1057867316,1094637831,-1090546581,-1067851532,1075940152,1073899499,1065228311,1079703855,-1060683450,
-                                                   1082809745,1059553803,1076080741,-1080144655,-1069457469,-1073204993,-1064810862,1071951074,-1069875473,1028319942,1074040879,-1082136736,-1073597770,-1079754927,-1076530130,1076574819,
-                                                   -1067667764,1033151989,1062593514,-1085613887,-1080690817,-1090659372,-1080401428,1071313246,1043351735,-1063435984,1063655380,1070507908,1065360061,-1059851737,1091164282,-1063203450,
-                                                   -1069429137,-1069139415,1086766935,-1056190823,1085179138,1079357277,1072314658,-1081688677,1067143074};
+                const int32_t model [] PROGMEM = {  -1062680060,-1098489450,-1081868530,1035125730,-1070407210,-1073266673,1082596050,1059378546,1080625591,1083113809,1070484169,-1070613398,-1079056665,-1069552614,-1072373095,1062700970,
+                                                    -1089343059,1067925972,1054701600,1064041979,1068852401,1064088536,-1063094580,-1080769958,1079148148,1075081802,1085092680,1086228354,-1066312650,1052126358,-1062884380,-1062324307,
+                                                    -1076098263,1081903460,1074104313,1077301670,1076316276,-1074162573,-1084846777,-1073443574,-1078251790,-1083548335,-1086396209,-1094470284,1043112550,1049829839,1090588564,-1055012765,
+                                                    -1056883636,1092480812,-1073349029,1074153354};
                neuralNetwork = model;
                 
         /**/
@@ -195,7 +195,7 @@
                 // This part, including testing different typologies, can be done more efficiently on larger computers and not necessarily on a controller,
                 // as Arduino code is portable to standard C++.
 
-                #define epoch 6201 // choose the right number of training iterations so the model gets trained but not overtrained
+                #define epoch 3701 // choose the right number of training iterations so the model gets trained but not overtrained
                 for (int trainingIteration = 0; trainingIteration < epoch; trainingIteration++) {
                         float errorOverAllPatterns = 0;
                         
