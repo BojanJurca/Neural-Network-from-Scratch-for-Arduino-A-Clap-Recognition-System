@@ -688,7 +688,7 @@ To estimate how quickly the sound energy decays, we calculate the linear regress
 
 More distinctive features can be extracted from the frequency domain of the sound signal. Since the focus here is on the mathematical modeling and neural network implementation, we’ll only briefly outline the frequency-based feature extraction process.
 
-To analyze the frequency content, we apply a Fourier transform. This technique reconstructs the signal by combining sine waves of various frequencies and magnitudes, revealing which frequencies are present and how strongly they contribute. Because our signal is digitized, we use the discrete version—known as the Discrete Fourier Transform (DFT). Efficient algorithms such as the Fast Fourier Transform (FFT) compute the DFT in 𝑂(𝑛 log 𝑛) time.
+***To analyze the frequency content, we apply a Fourier transform.*** This technique reconstructs the signal by combining sine waves of various frequencies and magnitudes, revealing which frequencies are present and how strongly they contribute. Because our signal is digitized, we use the discrete version—known as the Discrete Fourier Transform (DFT). Efficient algorithms such as the Fast Fourier Transform (FFT) compute the DFT in 𝑂(𝑛 log 𝑛) time.
 
 Human perception of frequency, like loudness, is nonlinear. We perceive pitch on a logarithmic scale. Therefore, the frequency magnitudes are mapped to the mel scale (short for “melody”), which better aligns with how we hear sound. Mel filters are then applied to resample the frequency magnitudes from a linear to a mel scale. The resulting magnitude values are also transformed logarithmically to compress dynamic range and emphasize perceptually relevant features.
 
