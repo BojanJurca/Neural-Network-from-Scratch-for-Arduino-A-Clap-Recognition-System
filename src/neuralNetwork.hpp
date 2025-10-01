@@ -2,7 +2,7 @@
 
     neuralNetwork.hpp
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://
 
     The neural network is implemented as a C++ variadic template. This approach was chosen to simplify both the usage 
     of the library and the modification of the network topology, making it as intuitive and flexible as possible.
@@ -10,14 +10,14 @@
 
         //                   .--- the number of neurons in the first layer - it corresponds to the size of the patterns that neural network will use to make the categorization
         //                   |    .--- second layer activation function
-        //                   |    |    .--- the number of neurons the second layer 
+        //                   |    |    .--- thse number of neurons the second layer 
         //                   |    |    |                               .--- output layer activation function
         //                   |    |    |                               |      .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes
         //                   |    |    |                               |      |
         neuralNetworkLayer_t<13, ReLU, 16, / * add more if needed * / Sigmoid, 2> neuralNetwork;
 
 
-    Bojan Jurca, Aug 12, 2025
+    Bojan Jurca, Oct 10, 2025
 
 */
 
@@ -133,6 +133,10 @@
 
                 // layer_t constructor - initialization of weight and bias
                 neuralNetworkLayer_t () {
+                    randomizeLayer ();
+                }
+                
+                void randomizeLayer () {
                     for (size_t n = 0; n < neuronCount; n++) {
                         for (size_t i = 0; i < inputCount; i++)
                             // weight are typically initialized with random numbers, He function is is particularly suitable to be used with ReLU activation function
@@ -141,7 +145,13 @@
                         bias [n] = 0;
                     }
                 }
+                
+                void randomize () {
+                    randomizeLayer ();
+                    nextLayer.randomizeLayer ();
+                }
 
+                
 
                 // iterate from the last layer to the first and adjust weight and bias meanwhile, returns the error clculated at output layer
                 template<typename input_t, typename expected_t>
@@ -199,7 +209,7 @@
                     for (size_t i = 0; i < sizeof (nn) / sizeof (int32_t); i++) {
                         if (i > 0) {
                             os << ",";
-                            if (i % 16 == 0)
+                            if (i % 10 == 0)
                                 os << endl;
                         }
                         os << *(p + i);
@@ -263,6 +273,10 @@
 
                 // layer_t constructor - initialization of weight and bias
                 neuralNetworkLayer_t () {
+                    randomizeLayer ();
+                }     
+                
+                void randomizeLayer () {
                     for (size_t n = 0; n < neuronCount; n++) {
                         for (size_t i = 0; i < inputCount; i++)
                             // weight are typically initialized with random numbers, He function is is particularly suitable to be used with ReLU activation function
@@ -270,7 +284,11 @@
                         // bias are typically set to 0 at initialization
                         bias [n] = 0;
                     }
-                }        
+                }
+                
+                void randomize () {
+                    randomizeLayer ();
+                }
 
 
                 // update weight and bias in the output layer, returns the error
@@ -335,7 +353,7 @@
                     for (size_t i = 0; i < sizeof (nn) / sizeof (int32_t); i++) {
                         if (i > 0) {
                             os << ",";
-                            if (i % 16 == 0)
+                            if (i % 10 == 0)
                                 os << endl;
                         }
                         os << *(p + i);

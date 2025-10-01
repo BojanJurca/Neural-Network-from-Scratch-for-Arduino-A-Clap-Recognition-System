@@ -15,7 +15,7 @@
     sketches to be compiled with a regular C++ compiler. However, hardware-dependent functions like pinMode are included 
     for compatibility but do not function in a standard C++ environment.
 
-    Bojan Jurca, May 22, 2025
+    Bojan Jurca, Oct 10, 2025
 
 */
 
@@ -29,9 +29,14 @@
         // ----- essential standard C++ functionalities for Arduino -----
 
 
-            // standard C++ rand for Arduino instead of random
+            // standard C++ rand and srand for Arduino instead of random
 
-                int rand () { return random (RAND_MAX); }
+                #define rand() random(RAND_MAX)
+                #define srand(X) randomSeed(X)
+                #ifdef ARDUINO_ARCH_AVR // Assuming Arduino Mega or Uno
+                    // introduce time function only for the purpose rand (time (NULL)) would work
+                    unsigned long time (void *p) { return millis (); }
+                #endif
 
 
         // cout instead of Arduino Serial
