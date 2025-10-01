@@ -246,6 +246,8 @@ Training the neural network involves setting weights and biases using training p
 
 With repeated training iterations, the error typically decreases. However, more training doesn't always lead to better classification accuracy. A neural network can become overtrained—meaning it learns the training patterns too precisely, resulting in minimal error on known data but poor generalization to new inputs. This is not the desired outcome. The graph illustrates a typical error reduction trend during the training process.
 
+Since there are many variables to optimize, the error function contains numerous local minima, and we can never be certain in which one the training process will end up. Therefore, the whole process needs to be repeated multiple times with different random initializations in order to obtain a better result.
+
 
 ![Error during training](training.jpg)
 
@@ -688,16 +690,46 @@ To estimate how quickly the sound energy decays, we calculate the linear regress
 
 More distinctive features can be extracted from the frequency domain of the sound signal. Since the focus here is on the mathematical modeling and neural network implementation, we’ll only briefly outline the frequency-based feature extraction process.
 
-***To analyze the frequency content, we apply a Fourier transform.*** This technique reconstructs the signal by combining sine waves of various frequencies and magnitudes, revealing which frequencies are present and how strongly they contribute. Because our signal is digitized, we use the discrete version—known as the Discrete Fourier Transform (DFT). Efficient algorithms such as the Fast Fourier Transform (FFT) compute the DFT in 𝑂(𝑛 log 𝑛) time.
 
-Human perception of frequency, like loudness, is nonlinear. We perceive pitch on a logarithmic scale. Therefore, the frequency magnitudes are mapped to the mel scale (short for “melody”), which better aligns with how we hear sound. Mel filters are then applied to resample the frequency magnitudes from a linear to a mel scale. The resulting magnitude values are also transformed logarithmically to compress dynamic range and emphasize perceptually relevant features.
+### Frequency Spectrum Analysis
 
-The number of mel filters can vary depending on the application. For clap recognition, 20 mel filters work very well.
+To analyze the frequency spectrum of a signal, we apply a Fourier Transform. This mathematical technique decomposes the signal into a sum of sine waves of varying frequencies and amplitudes, revealing which frequencies are present and how strongly they contribute. Since our signal is digitized, we use the discrete form—known as the Discrete Fourier Transform (DFT). Efficient algorithms like the Fast Fourier Transform (FFT) compute the DFT in 𝑂(𝑛 log 𝑛) time.
 
 
-### Mel filters
+### Human Perception and the Mel Scale
 
-Mel filters are triangular filters distributed evenly across the full range of the mel scale. Because the mel scale is logarithmic, this means their coverage across the linear frequency scale is uneven. Each mel filter is defined by three points: a start, a peak, and an end. To construct 20 mel filters, we need to calculate 22 mel frequency points—these serve as the boundaries and peaks for the filters.
+Human perception of sound—such as pitch and loudness—is inherently nonlinear. We perceive pitch on a logarithmic scale, not a linear one. To better align with this perceptual model, frequency magnitudes are mapped to the mel scale (short for “melody”). This transformation ensures that the frequency representation reflects how we actually hear sound.
+
+Next, mel filters are applied to resample the frequency magnitudes from a linear scale to the mel scale. These magnitudes are then transformed logarithmically to compress the dynamic range and highlight perceptually significant features.
+
+The number of mel filters can vary depending on the application. For example, 20 mel filters are highly effective for recognizing hand claps.
+
+
+### Mel Filters
+
+Mel filters are triangular filters distributed evenly across the mel scale. Because the mel scale is logarithmic, their spacing on the linear frequency axis is uneven. Each mel filter is defined by three points: a start, a peak, and an end. To construct 20 mel filters, we calculate 22 mel frequency points, which serve as the boundaries and peaks for the filters.
 
 
 ![Mel filters](mel.jpg)
+
+
+### Mel-Frequency Cepstral Coefficients (MFCC)
+
+The final step in feature extraction for neural networks is computing Mel-Frequency Cepstral Coefficients (MFCCs). While the raw output of mel filters can be fed directly into a neural network, using cepstral coefficients offers several advantages:
+
+ - Reduced correlation between features
+
+ - Lower dimensionality (typically only the first few coefficients are used)
+
+ - Improved noise robustness (higher-order coefficients tend to capture noise)
+
+These benefits often lead to better performance in tasks like speech recognition or audio classification.
+
+MFCCs are computed using the Discrete Cosine Transform (DCT), which converts the logarithmic mel filter outputs into cepstral coefficients. The DCT is similar to the DFT but operates only on real numbers. In essence, we’re analyzing the spectrum of a spectrum and in a playful twist, someone reversed the letters in “spectrum” to coin the term “cepstrum.”
+
+Preparing the features to feed into the neural network may have been a bit confusing so far. Here is an overview that recapitulates everything.
+
+
+![Big picture](bigpicture.jpg)
+
+
