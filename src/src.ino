@@ -6,7 +6,7 @@
 
     Sound sampling and clap recognition using neural network on Arduino Mega 2560
 
-    Bojan Jurca, Oct 10, 2025
+    Bojan Jurca, Nov 26, 2025
 
 */
 
@@ -27,12 +27,12 @@
 // discrete Fourier transform
 
     #define NyquistFrequency ( samplingFrequency / 2 )
-    #define distinctFftCoeficients ( sampleCount / 2 + 1 )
+    #define distinctFftCoeficients  ((sampleCount + 1) / 2 + 1) // works for both, even and odd numbers
 
 // mel filters and MFCCs
 
-    #define melFilterCount 18
-    #define mfccCount 13        // must be <  melFilterCount, tipicalla 12 or 13
+    #define melFilterCount 20
+    #define mfccCount 13        // must be < melFilterCount, tipically 12 or 13
 
 // sound pattern features
 
@@ -66,7 +66,7 @@
     //                    |                |    |      |    |                                     .--- output layer activation function
     //                    |                |    |      |    |                                     |    .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes (clap or not a clap in our case)
     //                    |                |    |      |    |                                     |    |
-    neuralNetworkLayer_t<featureCount, Sigmoid, 2, Sigmoid, 4,/* add more layers if needed */ Sigmoid, 2> neuralNetwork; // this configuration gives good results but try others as well 
+    neuralNetworkLayer_t<featureCount, Sigmoid, 2, Sigmoid, 3,/* add more layers if needed */ Sigmoid, 2> neuralNetwork; // this configuration gives good results but try others as well  
     // at this point neuralNetwork is initialized with random weights and biases and it is ready for training
     // - you can either start training it and export the trained model when fiished
     // - or you can load already trained model that is cappable of making usable outputs 
@@ -131,15 +131,14 @@
             // ----- LOAD TRAINED MODEL BEGIN -----
 
             cout << "loading trained model\n";
-            // error over all patterns: 16.0977
+            // error over all patterns: 3.47867
             // accuracy: 100% (claps: 100%   others: 100%)
             // model:
-            const int32_t model [] PROGMEM = {  -1099773206,1048999095,-1089518125,-1096488897,1050447353,-1079234641,-1081414888,1067336405,1061088452,1059974172,
-                                                1048998304,-1084808204,1040180128,1041034261,-1096666494,1050718242,1050269333,-1113341740,-1087003801,-1088233249,
-                                                -1085110132,-1085170003,1060826907,1057680654,1059747680,-1098848922,-1093395810,1038920905,1025419197,1026099677,
-                                                -1095338968,1017058898,1067655695,1064212500,-1090349669,-1090178838,-1098388433,1066284634,-1081355687,-1089844713,
-                                                -1082608540,1046688400,1042564017,1059637839,1106702400,-1060224167,-1065331978,-1046100217,-1040735651,1086918808,
-                                                1081414707,1101341763,-1066267515,1082242340 };
+            const int32_t model [] PROGMEM = {  -1065966516,-1079298553,1082273279,1073625518,1061579350,1077900222,1070075945,-1069910552,-1072431041,1075562182,
+                                                1067040550,-1088575706,1074520146,-1068238440,1083190075,1077271283,1063469639,1069772027,-1072093467,1051662872,
+                                                1072974707,1082777248,1070508301,-1081046202,-1073672553,-1077037630,-1086993185,-1089753020,-1065866667,-1086648393,
+                                                1074673962,1057196553,1086869673,1083529437,-1060619410,-1063640277,1053098129,1041190271,-1069148155,1078435292,
+                                                -1097106015,-1052773919,1095404895,-1084430925,1094412215,-1051756565,1059624795,-1121848440,1054633459};
             neuralNetwork = model;
                        
             // ----- LOAD TRAINED MODEL END -----    
@@ -158,7 +157,7 @@
             cout << "   80 % of them will be used for training and 20 % for validation\n";
             
             // do trainingCount independent trainings, most likely each ending in a different local minimum
-            #define trainingCount 20 // wel'll do trainingCount of independed trainings, most likely each time ending in a different local minimum
+            #define trainingCount 100 // wel'll do trainingCount of independed trainings, most likely each time ending in a different local minimum
 
             // store the best training result
             float bestTrainingErrorOverAllPatterns = 1.0f / 0.0f;
