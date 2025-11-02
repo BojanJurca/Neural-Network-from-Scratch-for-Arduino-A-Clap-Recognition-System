@@ -6,7 +6,7 @@
     
     Digital signal processing of audio recordings - extracting features from sounds.
     
-    Bojan Jurca, Oct 10, 2025
+    Bojan Jurca, Nov 26, 2025
 
 */
 
@@ -21,7 +21,7 @@
     
     void extractFeaturesFromSoundRecording (float feature [featureCount], int soundRecording [sampleCount]) {
     
-        #if __ZCR == 1
+        #if ZCR == 1
             // feature [0] = zero crossings
             feature [0] = 0;
             for (int s = 1; s < sampleCount; s++)
@@ -64,7 +64,7 @@
                 fftInput [i] = { (float) soundRecording [i], 0.f };
             fft (fftOutput, fftInput);
             for (int i = 0; i < distinctFftCoeficients; i++)
-                magnitude [i] = abs (fftOutput [i]);
+                magnitude [i] = abs (fftOutput [i]) / sampleCount;
         }
 
         // calculate MEL filters (&feature [ZCR + LRC], magnitude);
