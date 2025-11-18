@@ -747,6 +747,3 @@ Preparing the features to feed into the neural network may have been a bit confu
 [![GitHub forks](https://img.shields.io/github/forks/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System?style=flat-square)](https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/network/members)
 [![GitHub issues](https://img.shields.io/github/issues/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System?style=flat-square)](https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/issues)
 [![GitHub release downloads](https://img.shields.io/github/downloads/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/latest/total?style=flat-square)](https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/releases/latest)
-
-
-
