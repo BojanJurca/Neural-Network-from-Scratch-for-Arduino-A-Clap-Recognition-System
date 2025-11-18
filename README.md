@@ -2,7 +2,7 @@
 # Neural Network from Scratch (C++ for Arduino) - A Clap Recognition System
 
 
-Ever dreamed of building a clap recognition system that stays focused—even when a dog barks or dishes clatter in the background? Lightweight neural network delivers 97% accurate clap detection, all while running efficiently on Arduino boards without straining their resources.
+Ever dreamed of building a clap recognition system that stays focused—even when a dog barks or dishes clatter in the background? Lightweight neural network delivers more than 80% accurate clap detection, all while running efficiently on Arduino boards without straining their resources.
 
 
 ## What You Need
@@ -58,7 +58,7 @@ $$
 
 _Bias_ is a vector of equal size as the output vector of each layer. By providing each neuron with a trainable constant value, bias increases the flexibility of the model, allowing the network to fit the data more accurately.
 
-_af_ is a non-linear neuron activation function. It must be non-linear; otherwise, the whole neural network would just be a linear system. The ones used here are _Sigmoid_ and _ReLU_:
+_af_ is a non-linear neuron activation function. It must be non-linear; otherwise, the whole neural network would just be a linear system. The ones used here are _Sigmoid_, _ReLU_, _Tanh_ and its approximation fro faster calculation (_FastTanh_):
 
 
 $$
@@ -67,6 +67,14 @@ $$
 
 $$
 \\ ReLU (x) = max (0, x)
+$$
+
+$$
+\\ Tanh (x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+$$
+
+$$
+\\ FastTanh (x) = x \cdot \frac{27 + x^{2}}{27 + 9 \cdot x^{2}}
 $$
 
 
@@ -275,7 +283,7 @@ $$
 $$
 
 
-When the Sigmoid activation function is used, input values are squashed into the range between 0 and 1. This nonlinearity can lead to vanishing gradients, making it difficult for backpropagation to effectively update the network's weights. Xavier initialization addresses this issue by keeping the variance of activations and gradients stable across layers, improving signal flow during training.
+When the Sigmoid (or Tanh) activation function is used, input values are squashed into the range between 0 and 1 (or -1 and 1). This nonlinearity can lead to vanishing gradients, making it difficult for backpropagation to effectively update the network's weights. Xavier initialization addresses this issue by keeping the variance of activations and gradients stable across layers, improving signal flow during training.
 
 In contrast, the ReLU activation function zeroes out all negative inputs, effectively “killing” half of the signal. To compensate for this drop in signal strength, He initialization uses a larger variance than Xavier. This helps maintain the flow of information through the network and ensures more stable training with ReLU-activated layers.
 
