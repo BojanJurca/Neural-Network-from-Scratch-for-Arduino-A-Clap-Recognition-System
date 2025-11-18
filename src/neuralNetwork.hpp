@@ -17,7 +17,7 @@
         neuralNetworkLayer_t<13, ReLU, 16, / * add more if needed * / Sigmoid, 2> neuralNetwork;
 
 
-    Bojan Jurca, Oct 10, 2025
+    Bojan Jurca, Nov 26, 2025
 
 */
 
@@ -33,6 +33,8 @@
 
         #define Sigmoid 0
         #define ReLU 1
+        #define Tanh 2
+        #define FastTanh 3
 
         // neuron activation function (Sigmoid or ReLU)
         template <size_t activationFunction>
@@ -41,8 +43,17 @@
                 return 1.f / (1.f + exp (-x)); // Sigmoid
             } else if constexpr (activationFunction == ReLU) {
                 return x <= 0.f ? 0.f : x; // ReLU
+            } else if constexpr (activationFunction == Tanh) {
+                float ex = expf (x);
+                float enx = expf (-x);
+                return (ex - enx) / (ex + enx);
+            } else if constexpr (activationFunction == FastTanh) { // tanh approximation for faster calculation
+                if (x < -3) return -1;
+                if (x > 3) return 1;
+                float x2 = x * x;
+                return x * (27 + x2) / (27 + 9 * x2);
             } else {
-                static_assert (activationFunction < 2, "Unsupported activation function");
+                static_assert (activationFunction < 4, "Unsupported activation function");
                 return 0.f;
             }
         }
@@ -55,8 +66,17 @@
                 return s * (1 - s); // Sigmoid'
             } else if constexpr (activationFunction == ReLU) {
                 return x <= 0.f ? 0.f : 1.f; // ReLU'
+            } else if constexpr (activationFunction == Tanh) {
+                float ex = expf (x);
+                float enx = expf (-x);
+                float t = (ex - enx) / (ex + enx);
+                return 1.0f - t * t;
+            } else if constexpr (activationFunction == FastTanh) { // tanh' approximation for faster calculation
+                if (x < -3 || x > 3) return 0.0f;
+                float x2 = x * x;
+                return (x2 - 9) * (x2 -9) / (9 * (x2 + 3) * (x2 + 3));
             } else {
-                static_assert (activationFunction < 2, "Unsupported activation function");
+                static_assert (activationFunction < 4, "Unsupported activation function");
                 return 0.f;
             }
         }
@@ -66,8 +86,8 @@
             // use Box-Muller Transform to calculate normaly distributed random variable from uniformly distrubuted random function
         
                 // select 2 independent uniformly distributed random values in interval (0, 1)
-                float U1 = ((float) (rand () % (RAND_MAX - 1) + 1)) / RAND_MAX;
-                float U2 = ((float) (rand () % (RAND_MAX - 1) + 1)) / RAND_MAX;
+                float U1 = ((float) rand () + 1.0f) / ((float) RAND_MAX + 2.0f);
+                float U2 = ((float) rand () + 1.0f) / ((float) RAND_MAX + 2.0f);
                 
                 // use Box-Muller to tranform them to two independed normally distributed random values with mean of 0 and variance of 1
                 float N1 = sqrt (-2 * log (U1)) * cos (2 * M_PI * U2); 
@@ -75,12 +95,16 @@
         
             // apply the desired mean and variance
                 if (activationFunction == Sigmoid) {
-                    return 0 + sqrt (2.0 / (inputCount + neuronCount)) * N1; // Xavier
+                    return 0 + sqrt (2.0 / (inputCount + neuronCount)) * N1;    // Xavier (Glorot)
                 } else if (activationFunction == ReLU) {
-                    return 0 + sqrt (2.0 / inputCount) * N1; // He
+                    return 0 + sqrt (2.0 / inputCount) * N1;                    // He
+                } else if (activationFunction == Tanh) {    
+                    return 0 + sqrt (2.0 / (inputCount + neuronCount)) * N1;    // Xavier (Glorot)
+                } else if (activationFunction == FastTanh) {    
+                    return 0 + sqrt (2.0 / (inputCount + neuronCount)) * N1;    // Xavier (Glorot)
                 } else {
-                    // static_assert (activationFunction < 2, "Unsupported activation function");
-                    return 0.f;
+                    // static_assert (activationFunction < 4, "Unsupported activation function");
+                    return sqrtf (1.0f / inputCount) * N1;
                 }
         }
 
@@ -252,7 +276,9 @@
                             for (size_t i = 0; i < inputCount; i++)
                                 neuron [n] += weight [n][i] * input [i];
                             neuron [n] = af<activationFunction> (neuron [n]);
+                            // cout << " neuron [" << n << "] = " << neuron [n] << endl;
                         }
+                            // exit (0);
 
                     // softmax normalization of the result
                         float sum = 0;
@@ -323,6 +349,9 @@
                         for (size_t n = 0; n < neuronCount; n++) {
                             // calculat delta at output layer    
                             delta [n] = (neuron [n] - expected [n]) * af_derivative<activationFunction> (z [n]);
+                            
+                            // cout << " af' [" << n << "] = " << af_derivative<activationFunction> (z [n]) << endl;
+                            // cout << " delta [" << n << "] = " << delta [n] << endl;
 
                             // update weight
                             for (size_t i = 0; i < inputCount; i++)
@@ -330,7 +359,12 @@
 
                             // update bias
                             bias [n] -= learningRate * delta [n];
+                            
+                            //cout << " bias [" << n << "] = " << bias [n] << endl;
                         }
+                        //cout << "--------------\n";
+                        
+                        
 
                     // calculate only the first part of previous layer delta, since z from previous layer is not available at this layer
                         // previousLayerDelta = weight * delta * a' (previous layer z)
@@ -344,7 +378,6 @@
 
                     return error;
                 }
-
 
                 // export the whole model as C++ initializer list
                 friend ostream& operator << (ostream& os, const neuralNetworkLayer_t& nn) {
@@ -361,7 +394,7 @@
                     os << "}\n";
                     return os;
                 }
-                
+
                 template<size_t N>
                 neuralNetworkLayer_t& operator = (const int32_t (&model) [N]) {
                     static_assert (N == sizeof (*this) / sizeof (int32_t), "Wrong size of model!");
