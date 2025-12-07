@@ -2,7 +2,7 @@
 # Neural Network from Scratch (C++ for Arduino) - A Clap Recognition System
 
 
-Ever dreamed of building a clap recognition system that stays focused—even when a dog barks or dishes clatter in the background? Lightweight neural network delivers more than 80% accurate clap detection, all while running efficiently on Arduino boards without straining their resources.
+Ever dreamed of building a clap recognition system that stays focused—even when a dog barks or dishes clatter in the background? Lightweight neural network delivers more than 90% accurate clap detection, all while running efficiently on Arduino boards without straining their resources.
 
 
 ## What You Need
@@ -17,14 +17,7 @@ The system is built of the following components:
 
  - Training sound patterns collected using the same system to improve model accuracy.
 
-
-## Inspiration and Resources
-
-This library was inspired by a great article [Neural Network from Scratch (C++) by Thakee Nathees](https://medium.com/@thakeenathees/neural-network-from-scratch-c-e2dc8977646b).
-
-For neural network theory, you can check out [Backpropagation calculus](https://www.3blue1brown.com/lessons/backpropagation-calculus).
-
-While developing this library, I focused more on simplicity and code elegance rather than raw performance, meaning there’s still room for optimization.
+ - LightweightSTL library to assure compatibility of Arduino code with standard C++: https://github.com/BojanJurca/Lightweight-Standard-Template-Library-STL-for-Arduino
 
 
 ## Hardware
@@ -44,11 +37,18 @@ It would be better to sample 10 ms with 40 kHz but due to limited processing pow
 ## Neural Network
 
 
-### The basics
+### Introduction
 
-The neuralNetwork.hpp library is designed to use as little memory as possible so it is suitable for Arduino controlers. Besides it doesn't use any heap memory at all making it also suitable for AVR boards.
 
-Let's go briefly through the basics. A neural network is a set of layers, each containing its neurons. The output of one layer is the input to the next. Each input influences each neuron, but not equally. This is why a matrix of weights is used at each layer. Neuron values at layer _L_ are calculated as:
+A neural network consists of layers of interconnected neurons. Each neuron performs a simple computation, but when many layers are combined, the network can approximate very complex functions. The essential components are:
+
+ - Input layer - receives the input data.
+
+ - Hidden layers - transform the data using weights, biases, and activation functions.
+
+ - Output layer - produces the final prediction.
+
+Each layer _L_ computes its output from its input using the following relationship:
 
 
 $$
@@ -56,32 +56,8 @@ $$
 $$
 
 
-_Bias_ is a vector of equal size as the output vector of each layer. By providing each neuron with a trainable constant value, bias increases the flexibility of the model, allowing the network to fit the data more accurately.
+The dimensions of the weight matrix, bias vector, and inputs depend on the specific layer.
 
-_af_ is a non-linear neuron activation function. It must be non-linear; otherwise, the whole neural network would just be a linear system. The ones used here are _Sigmoid_, _ReLU_, _Tanh_ and its approximation fro faster calculation (_FastTanh_):
-
-
-$$
-\\ Sigmoid (x) = \frac{1}{1 + e^{-x}}
-$$
-
-$$
-\\ ReLU (x) = max (0, x)
-$$
-
-$$
-\\ Tanh (x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
-$$
-
-$$
-\\ FastTanh (x) = x \cdot \frac{27 + x^{2}}{27 + 9 \cdot x^{2}}
-$$
-
-
-![Sigmoid, ReLU](af.jpg)
-
-
-The size of the input, the weight matrix, the output, and bias vary in each layer.
 
 ![Neural Network](nn.png)
 
@@ -102,41 +78,105 @@ $$
 $$
 
 
-The correctness of the output depends on how weights and biases are set in all neural network layers. This is where training comes in, which will be addressed later.
+### Activation Functions
+
+
+Activation functions introduce nonlinearity. Without them, no matter how many layers the network has, it would behave like a single linear transformation.
+
+The project uses these activation functions:
+
+ - Sigmoid
+
+ - ReLU
+
+ - Tanh
+
+ - FastTanh (an efficient approximation of Tanh)
+
+Each activation function has different properties, allowing the network to learn various patterns effectively.
+
+
+The sigmoid (logistic) function squashes any real input into the open interval (0, 1). It is commonly used in binary classification problems and in some historical neural network architectures. It is smooth and differentiable. Output is bounded between 0 and 1. Derivative becomes extremely small for large |x| (vanishing gradient problem).
+
+The sigmoid function is defined as:
+
+
+$$
+\\ Sigmoid (x) = \frac{1}{1 + e^{-x}}
+$$
+
+
+Rectified Linear Unit (ReLU)
+
+ReLU is widely used in modern neural networks due to its computational simplicity and robustness during training. It is efficient to compute. It avoids vanishing gradients for x > 0 but can cause dead neurons when inputs remain negative.
+
+The ReLU function is defined as:
+
+
+$$
+\\ ReLU (x) = max (0, x)
+$$
+
+
+Hyperbolic Tangent (Tanh)
+
+Tanh is similar to sigmoid but centered around zero, which often improves convergence. Output is in range: (-1, 1). It is zero-centered which is generally better for optimization. As the sigmoid it suffers from vanishing gradients for large |x|.
+
+Tanh can be calculated as:
+
+
+$$
+\\ Tanh (x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+$$
+
+
+FastTanh - Efficient Approximation
+
+FastTanh is a rational approximation of tanh designed for faster computation (with fewer floating-point operations), especially on embedded systems:
+
+
+$$
+\\ FastTanh (x) = x \cdot \frac{27 + x^{2}}{27 + 9 \cdot x^{2}}
+$$
+
+
+![Activation functions](af.jpg)
 
 
 ## The use of neuralNetwork.hpp library
 
-When calculating the output from the input pattern, the calculation starts at the input layer and proceeds to the output layer. This is why this process is called a forward pass.
+
+To perform a forward pass, you configure the neural network and then provide an input pattern:
+
 
 ```C++
 #include "neuralnetwork.hpp"
 
 
-//                   .--- the number of neurons in the first layer - it corresponds to the size of the patterns that neural network will use to make the categorization
-//                   |    .--- second layer activation function
-//                   |    |    .--- the number of neurons the second layer 
-//                   |    |    |                             .--- output layer activation function
-//                   |    |    |                             |      .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes
-//                   |    |    |                             |      |
+                //   .--- the number of inputs
+                //   |    .--- the first layer activation function (Sigmoid, ReLU, Tanh, FastTanh)
+                //   |    |    .--- the number of neurons the first layer 
+                //   |    |    |                               .--- output layer activation function (Sigmoid, ReLU, Tanh, FastTanh)
+                //   |    |    |                               |    .--- the number of neurons in the output layer = the number of outputs
+                //   |    |    |                               |    |
 neuralNetworkLayer_t<8, ReLU, 16, /* add more if needed */ Sigmoid, 2> neuralNetwork;
 // at this point neuralNetwork is initialized with random weights and biases and it is ready for training
 // - you can either start training it and export the trained model when fiished
 // - or you can load already trained model that is cappable of making usable outputs 
 
 void setup () {
-    cinit (); // instead of Serial.begin (115200) or Serial.begin (9600) for AVR boards
 
-    // import trained model from C++ initializer list or int32_t array
-    neuralNetwork = {1030875393,1053884929,-1080728422,1065850332, ... ,1056579159};
+    // import trained model from C++ initializer list or float array
+    neuralNetwork = {0x1.099fp+0f,0x1.072ed4p+0f,...,-0x1.1519e4p+1f,-0x1.fdc5b8p+0f,-0x1.8f5b94p-1f};
 
     // categorize the input pattern
-    auto probability = neuralNetwork.forwardPass ( { 18, 20, 7, 2, 1 } ); // forwardPass returns the array which size corresponds to the output layer neurons 
-    cout << "probabilities: ( "; // instead of Serial.print
+    auto probability = softmax (neuralNetwork.forwardPass ( { 18, 20, 7, 2, 1 } )); // forwardPass returns the array which size corresponds to the output layer neurons, softmax transforms the output to probabilities
+    cout << "probabilities: ( ";
     for (auto p : probability)
         cout << p << " ";
     cout << ")\n";
 ```
+
 
 It is difficult to tell the neural network topology (meaning the number of layers, how many neurons each would have and their activation functions) in advance. Just try different arrangements and see which works best for your case.
 
@@ -201,16 +241,6 @@ It is difficult to tell the neural network topology (meaning the number of layer
                         neuron [n] = af (z [n]);
                     }
 
-                // softmax normalization of the result
-                    float sum = 0;
-                    for (size_t n = 0; n < neuronCount; n++)
-                        sum += expf (neuron [n]);
-                    for (size_t n = 0; n < neuronCount; n++)
-                        if (sum > 0)
-                            neuron [n] = expf (neuron [n]) / sum;
-                        else
-                            neuron [n] = 0;
-
                 // start returning the result through all the previous layers
                     return neuron;
             }
@@ -220,55 +250,58 @@ It is difficult to tell the neural network topology (meaning the number of layer
 
 ## Training the neural network
 
+
 The following training code is a little oversimplified but works well for demonstration.
 
 
 ```C++
-    // This part, including testing different typologies, can be done more efficiently on larger computers and not necessarily on a controller,
-    // as Arduino code is portable to standard C++.
+    // This part, including testing different typologies, can be done more efficiently on a computer and not necessarily on a controller,
+    // as the code is portable to standard C++.
 
+    // Gradient descent:
     #define epoch 1000 // choose the right number of training iterations so the model gets trained but not overtrained
-    for (int trainingIteration = 0; trainingIteration < epoch; trainingIteration++) {
+    for (int gradientDescenIteration = 0; gradientDescenIteration < epoch; gradientDescenIteration ++) {
         // normally we would need like 1.000 training patterns
 
-        float errorOverAllPatterns = 0;
+        float loss = 0; // loss = Σ error of training pattern
 
-                                                            //     .--- tell neuralNetwork that the pattern belongs to category 0 (0 is the index of output vector that designates category 0)
-                                                            //     |
-        errorOverAllPatterns += neuralNetwork.backwardPropagation ( { 1, 2, 6, 18, 20 }, { 1, 0, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 0
+                                                                    //     .--- tell neuralNetwork that the pattern belongs to category 0 (0 is the index of output vector that designates category 0)
+                                                                    //     |
+        loss += neuralNetwork.backwardPropagation ( { 1, 2, 6, 18, 20 }, { 1, 0, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 0
 
-                                                            //        .--- tell neuralNetwork that the pattern belongs to category 1 (1 is the index of output vector that designates category 1)
-                                                            //        |    
-        errorOverAllPatterns += neuralNetwork.backwardPropagation ( { 1, 2, 25, 3, 1 },  { 0, 1, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 1
+                                                                    //        .--- tell neuralNetwork that the pattern belongs to category 1 (1 is the index of output vector that designates category 1)
+                                                                    //        |    
+        loss += neuralNetwork.backwardPropagation ( { 1, 2, 25, 3, 1 },  { 0, 1, 0 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 1
 
-                                                            //           .--- tell neuralNetwork that the pattern belongs to category 2 (2 is the index of output vector that designates category 2)
-                                                            //           |    
-        errorOverAllPatterns += neuralNetwork.backwardPropagation ( { 19, 10, 3, 2, 1 }, { 0, 0, 1 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 2
+                                                                    //           .--- tell neuralNetwork that the pattern belongs to category 2 (2 is the index of output vector that designates category 2)
+                                                                    //           |    
+        loss += neuralNetwork.backwardPropagation ( { 19, 10, 3, 2, 1 }, { 0, 0, 1 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 2
     }
 
     // export trained model as C++ int32_t initializer list
     cout << neuralNetwork << endl;
 ```
 
-Training the neural network involves setting weights and biases using training patterns at the input and expected results at the output. For each given pattern and expected result, an error is assessed at the output layer, and the weights and biases of the output layer are adjusted to minimize the error. Then, the same process is applied to the previous layer, and so on. This is why the process is called backward propagation—it propagates the error at the output layer back to the previous layers.
+Training the neural network involves setting weights and biases using training patterns at the input and expected results at the output. For each given pattern and expected result, an error is assessed at the output layer, and the weights and biases of the output layer are adjusted to minimize the error. Then, the same process is applied to the previous layer, and so on. This is why the process is called backward propagation-it propagates the error at the output layer back to the previous layers.
 
-With repeated training iterations, the error typically decreases. However, more training doesn't always lead to better classification accuracy. A neural network can become overtrained—meaning it learns the training patterns too precisely, resulting in minimal error on known data but poor generalization to new inputs. This is not the desired outcome. The graph illustrates a typical error reduction trend during the training process.
-
-Since there are many variables to optimize, the error function contains numerous local minima, and we can never be certain in which one the training process will end up. Therefore, the whole process needs to be repeated multiple times with different random initializations in order to obtain a better result.
+With repeated training iterations, the error typically decreases. However, more training doesn't always lead to better classification accuracy. A neural network can become overtrained-meaning it learns the training patterns too precisely, resulting in minimal error on known data but poor generalization to new inputs. This is not the desired outcome. The graph illustrates a typical error reduction trend during the training process.
 
 
 ![Error during training](training.jpg)
 
 
-Training may be too demanding for Arduino boards, but you can do it on bigger machines, export the trained model there and import it to Arduino. This is why _compatibility.h_ library is added, to let Arduino code compile in standard C++ and the other way arround.
+Since the optimization involves a large number of variables, the error function typically exhibits many local minima, and it is impossible to guarantee where the training process will converge. To mitigate this, the entire procedure must be repeated multiple times with different random initializations. In practice, we randomly initialize the weights and biases, perform gradient descent to reach a local minimum, and repeat this process several times. Finally, we select the solution that yields the highest classification accuracy and the lowest loss (loss being a sum of errors of training patterns). 
+
+Training may be too demanding for Arduino boards, but you can do it on a computer, export the trained model there as C++ initializer list and import it to Arduino. The code is portable to standard C++.
 
 
 ### Bacward propagation theory and formulas to update the weights and the biases
 
 
+Backward propagation is the algorithm that allows a neural network to learn by adjusting its weights and biases in the direction that reduces the error function. It works by propagating the error from the output layer backward through the network.
 Initially, all the weights in all layers of the neural network are initialized with random values. 
 
-Normal Xavier initialization (besides normal Xavier initialization there is also a uniform one that is calculates slightly differently) uses a Gaussian probability distribution with a mean of 0 and a standard deviation of $\sqrt{\frac{2}{I^{L} + N^{L}}}$, where _I<sup>L</sup>_ is the size of the input to layer _L_ and _N<sup>L</sup>_ is the number of neurons in the layer _L_ (size of the output of the layer). 
+Normal Xavier initialization (besides normal Xavier initialization there is also a uniform one that is calculates slightly differently) uses a Gaussian probability distribution with a mean of 0 and a standard deviation of $\sqrt{\frac{2}{I^{L} + N^{L}}}$, where _I<sup>L</sup>_ is the size of the input to layer _L_ and _N<sup>L</sup>_ is the number of neurons in the layer _L_ (size of the output of the layer).
 
 He initialization uses a Gaussian probability distribution with a mean of 0 and a standard deviation of $\sqrt{\frac{2}{I^{L}}}$, where _I<sup>L</sup>_ is the size of the input to layer _L_.
 
@@ -286,7 +319,6 @@ $$
 When the Sigmoid (or Tanh) activation function is used, input values are squashed into the range between 0 and 1 (or -1 and 1). This nonlinearity can lead to vanishing gradients, making it difficult for backpropagation to effectively update the network's weights. Xavier initialization addresses this issue by keeping the variance of activations and gradients stable across layers, improving signal flow during training.
 
 In contrast, the ReLU activation function zeroes out all negative inputs, effectively “killing” half of the signal. To compensate for this drop in signal strength, He initialization uses a larger variance than Xavier. This helps maintain the flow of information through the network and ensures more stable training with ReLU-activated layers.
-
 
 C++ has a built-in pseudo-random generator that produces uniformly distributed random values. The Box-Muller transform can efficiently transform them into Gaussian distributed random numbers. It produces two independent random numbers _N<sub>1</sub>_ and _N<sub>2</sub>_ from two independent uniformly distributed random numbers _U<sub>1</sub>_ and _U<sub>2</sub>_ in the interval (0, 1), but we only need one of them.
 
@@ -346,7 +378,7 @@ $$
 $$
 
 
-These are the notations and definitions we are going to use so it will be easier to follow the deduction.
+### Preliminaries
 
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**L** – we will count the layers of the neural network with L_ <br>
@@ -359,7 +391,7 @@ These are the notations and definitions we are going to use so it will be easier
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**weight <sup>L</sup><sub>[n][i]</sub>** = element [n][i] of weight matrix at layer L_ <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**bias<sup>L</sup>** = bias vector at layer L_ <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**bias<sup>L</sup><sub>[n]</sub>** = element [n] of bias vector at layer L_ <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**z<sup>L</sup>** = intermediate result vector: z<sup>L</sup> = weight<sup>L</sup> x bias<sup>L</sup>_ <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**z<sup>L</sup>** = intermediate result vector: z<sup>L</sup> = weight<sup>L</sup> x input<sup>L</sup> + bias<sup>L</sup>_ <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**z<sup>L</sup><sub>[n]</sub>** = element [n] of z vector at layer L_ <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**af** = neuron activation function: af (z)_ <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _**af<sup>L</sup><sub>[n]</sub>** = element [n] of calculated neuron value (output) vector at layer L: af (z<sup>L</sup><sub>[n]</sub>)_ <br> 
@@ -455,9 +487,8 @@ Similary we can calculate $\frac{\partial E}{\partial bias^{Loutput}}$. _E_ is a
 >
 
 
-
-
 #### Gradient $\frac{\partial E}{\partial weight}$ in hidden layers
+
 
 Similarly as we did with the output layer we can go one layer back:
 
@@ -500,6 +531,7 @@ So finally:
 
 #### Gradient $\frac{\partial E}{\partial bias}$ in previous (hidden) layers
 
+
 Similary we can calculate $\frac{\partial E}{\partial bias^{L}}$. We use the same logic as for output layer:
 
 
@@ -534,7 +566,9 @@ Similary we can calculate $\frac{\partial E}{\partial bias^{L}}$. We use the sam
 > $$
 >
 
+
 ## Implementation of backward propagation with C++ variadic template
+
 
 Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neural network here is implemented as C++ variadic template so one layer can not directly access another's internal data. This is why delta gets updated in two parts. In layer L+1 weight<sup>L+1</sup> x delta<sup>L+1</sup> gets calculated. Once the procssing is returned to layer _L_ it is multiplied by _af'(z<sup>L</sup>_).
 
@@ -575,7 +609,7 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
                 // calculate the first part of delta in the next layer then apply activation function derivative here
                     // delta = next layer weight * next layer delta * af' (z)
                     float delta [neuronCount];
-                    float error = nextLayer.__backwardPropagation__ (neuron, expected, delta);
+                    float error = nextLayer.backwardPropagation (neuron, expected, delta);
                     // calculate only the second part of delta, the first par has already been calculated at the next layer
                     for (size_t n = 0; n < neuronCount; n++)
                         delta [n] *= afDerivative (z [n]);
@@ -605,7 +639,7 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
 
 // output layer
     template<typename input_t, typename expected_t>
-    void backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [neuronCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
+    void backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
 
         private:
 
@@ -670,8 +704,8 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
 ```
 
 
-
 ## Clap audio recording
+
 
 Proper preparation of input data is crucial for effective neural network performance. If we had built a convolutional neural network (CNN), we could feed it raw audio recordings directly, allowing the CNN to learn spatial and temporal patterns on its own. However, with a fully connected neural network like ours, a different strategy is required. Instead of raw data, we must extract a set of distinctive features from the sound recording—features that the network can then use for accurate classification.
 
@@ -688,10 +722,12 @@ Some features can be extracted directly from the time-domain signal, as the wave
 
 ### Zero Crossings
 
+
 Zero crossings are calculated by counting how many times the signal crosses the time axis. For a typical clap, around 20 zero crossings can be expected within a 7-millisecond window.
 
 
 ### Linear Regression Coefficient
+
 
 To estimate how quickly the sound energy decays, we calculate the linear regression coefficient of the signal’s power. Instead of using raw power values, we apply a logarithmic transformation, which better reflects human perception of loudness. This also ensures that louder segments of the recording don’t dominate the analysis, allowing quieter parts to contribute meaningfully.
 
@@ -701,12 +737,14 @@ More distinctive features can be extracted from the frequency domain of the soun
 
 ### Frequency Spectrum Analysis
 
-To analyze the frequency spectrum of a signal, we apply a Fourier Transform. This mathematical technique decomposes the signal into a sum of sine waves of varying frequencies and amplitudes, revealing which frequencies are present and how strongly they contribute. Since our signal is digitized, we use the discrete form—known as the Discrete Fourier Transform (DFT). Efficient algorithms like the Fast Fourier Transform (FFT) compute the DFT in 𝑂(𝑛 log 𝑛) time.
+
+To analyze the frequency spectrum of a signal, we apply a Fourier Transform. This mathematical technique decomposes the signal into a sum of sine waves of varying frequencies and amplitudes, revealing which frequencies are present and how strongly they contribute. Since our signal is digitized, we use the discrete form known as the Discrete Fourier Transform (DFT). Efficient algorithms like the Fast Fourier Transform (FFT) compute the DFT in 𝑂(𝑛 log 𝑛) time.
 
 
 ### Human Perception and the Mel Scale
 
-Human perception of sound—such as pitch and loudness—is inherently nonlinear. We perceive pitch on a logarithmic scale, not a linear one. To better align with this perceptual model, frequency magnitudes are mapped to the mel scale (short for “melody”). This transformation ensures that the frequency representation reflects how we actually hear sound.
+
+Human perception of sound such as pitch and loudness is inherently nonlinear. We perceive pitch on a logarithmic scale, not a linear one. To better align with this perceptual model, frequency magnitudes are mapped to the mel scale (short for “melody”). This transformation ensures that the frequency representation reflects how we actually hear sound.
 
 Next, mel filters are applied to resample the frequency magnitudes from a linear scale to the mel scale. These magnitudes are then transformed logarithmically to compress the dynamic range and highlight perceptually significant features.
 
@@ -715,6 +753,7 @@ The number of mel filters can vary depending on the application. For example, 20
 
 ### Mel Filters
 
+
 Mel filters are triangular filters distributed evenly across the mel scale. Because the mel scale is logarithmic, their spacing on the linear frequency axis is uneven. Each mel filter is defined by three points: a start, a peak, and an end. To construct 20 mel filters, we calculate 22 mel frequency points, which serve as the boundaries and peaks for the filters.
 
 
@@ -722,6 +761,7 @@ Mel filters are triangular filters distributed evenly across the mel scale. Beca
 
 
 ### Mel-Frequency Cepstral Coefficients (MFCC)
+
 
 The final step in feature extraction for neural networks is computing Mel-Frequency Cepstral Coefficients (MFCCs). While the raw output of mel filters can be fed directly into a neural network, using cepstral coefficients offers several advantages:
 
@@ -739,11 +779,3 @@ Preparing the features to feed into the neural network may have been a bit confu
 
 
 ![Big picture](bigpicture.jpg)
-
-
-## Repositiry status
-
-[![GitHub stars](https://img.shields.io/github/stars/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System?style=flat-square)](https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System?style=flat-square)](https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/network/members)
-[![GitHub issues](https://img.shields.io/github/issues/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System?style=flat-square)](https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/issues)
-[![GitHub release downloads](https://img.shields.io/github/downloads/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/latest/total?style=flat-square)](https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System/releases/latest)
