@@ -2,19 +2,19 @@
 
     neuralNetwork.hpp
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System
 
     The neural network is implemented as a C++ variadic template. This approach was chosen to simplify both the usage 
     of the library and the modification of the network topology, making it as intuitive and flexible as possible.
+ 
 
-
-        //                   .--- the number of neurons in the first layer - it corresponds to the size of the patterns that neural network will use to make the categorization
-        //                   |    .--- second layer activation function
-        //                   |    |    .--- thse number of neurons the second layer 
-        //                   |    |    |                               .--- output layer activation function
-        //                   |    |    |                               |      .--- the number of neurons in the output layer - it corresponds to the number of categories that the neural network recognizes
-        //                   |    |    |                               |      |
-        neuralNetworkLayer_t<13, ReLU, 16, / * add more if needed * / Sigmoid, 2> neuralNetwork;
+        //                    .--- the number of inputs
+        //                    |    .--- the first layer activation function (Sigmoid, ReLU, Tanh, FastTanh)
+        //                    |    |    .--- the number of neurons the first layer 
+        //                    |    |    |                               .--- output layer activation function (Sigmoid, ReLU, Tanh, FastTanh)
+        //                    |    |    |                               |      .--- the number of neurons in the output layer = the number of outputs
+        //                    |    |    |                               |      |
+        neuralNetworkLayer_t<13, Tanh, 16, / * add more if needed * / Sigmoid, 2> neuralNetwork;
 
 
     Bojan Jurca, Nov 26, 2025
@@ -22,21 +22,33 @@
 */
 
 
-#include "compatibility.h" // Arduino <-> standard C++ compatibility 
-
-
 #ifndef __NEURAL_NETWORK_HPP__
     #define __NEURAL_NETWORK_HPP__
 
 
-    // non-linear neuron activation function and its derivative
+    // platform abstraction 
+    #ifdef ARDUINO                  // Arduino build requires LightwaightSTL library: https://github.com/BojanJurca/Lightweight-Standard-Template-Library-STL-for-Arduino
+        #include <array.hpp>
+        #include <ostream.hpp>
+        #define rand() random(RAND_MAX)
+        #define srand(X) randomSeed(X)
+    #else                           // standard C++ build
+        #include <array>
+        #include <iostream>
+        #include <cstring>
+        #include <cmath>
+        using namespace std;
+    #endif
+
+
+    // non-linear neuron activation functions and their derivatives
 
         #define Sigmoid 0
         #define ReLU 1
         #define Tanh 2
         #define FastTanh 3
 
-        // neuron activation function (Sigmoid or ReLU)
+        // neuron activation function (Sigmoid, ReLU, Tanh or FastTanh)
         template <size_t activationFunction>
         float af (float x) {
             if constexpr (activationFunction == Sigmoid) {
@@ -58,7 +70,7 @@
             }
         }
         
-        // neuron activation function derivative (Sigmoid' or ReLU')
+        // neuron activation function derivative (Sigmoid', ReLU', Tanh' or FastTanh')
         template <size_t activationFunction>
         float af_derivative (float x) {
             if constexpr (activationFunction == Sigmoid) {
@@ -108,10 +120,13 @@
                 }
         }
 
+
     // training
 
         // learning rate
-        #define learningRate 0.01
+        #ifndef learningRate
+            #define learningRate 0.01
+        #endif
 
 
     // basic neuralNetwork_t class template, not used but needed by C++ compiler
@@ -137,21 +152,29 @@
 
                 // calculates the neurons of this layer and returns the category that the input belongs to
                 template<typename input_t>
-                output_t forwardPass (const input_t (&input) [inputCount]) {   
+                output_t forwardPass (const input_t (&input) [inputCount]) const {   
                     float neuron [neuronCount];
 
-                    // neuron = a (w x input + bias)
+                    // neuron = af (w x input + bias)
                         for (size_t n = 0; n < neuronCount; n++) {
                             neuron [n] = bias [n];
                             for (size_t i = 0; i < inputCount; i++)
                                 neuron [n] += weight [n][i] * input [i];
                             neuron [n] = af<activationFunction> (neuron [n]);
+                            // cout << "   hidden layer neuron [" << n << "] = " << neuron [n] << endl;
                         }
 
                     // return what the next layer thinks about the neurons clculated here
                         return nextLayer.forwardPass (neuron);
                 }
             
+                // make it possible to use arrays instead of C arrays
+                template<typename input_t>
+                __attribute__((always_inline))
+                inline output_t forwardPass (const array<input_t, inputCount> input) const {   
+                    return forwardPass (*reinterpret_cast<const input_t (*)[inputCount]> (input.data ()));
+                }
+
 
             // training
 
@@ -175,7 +198,6 @@
                     nextLayer.randomizeLayer ();
                 }
 
-                
 
                 // iterate from the last layer to the first and adjust weight and bias meanwhile, returns the error clculated at output layer
                 template<typename input_t, typename expected_t>
@@ -186,7 +208,7 @@
                         float neuron [neuronCount];
 
                         // z = weight x input + bias
-                        // neuron = a (z)
+                        // neuron = af (z)
                         for (size_t n = 0; n < neuronCount; n++) {
                             z [n] = bias [n];
                             for (size_t i = 0; i < inputCount; i++)
@@ -199,8 +221,10 @@
                         float delta [neuronCount]; 
                         float error = nextLayer.backwardPropagation (neuron, expected, delta);
                         // calculate only the second part of delta, the first par has already been calculated at the next layer
-                        for (size_t n = 0; n < neuronCount; n++)
+                        for (size_t n = 0; n < neuronCount; n++) {
                             delta [n] *= af_derivative<activationFunction> (z [n]);
+                            // cout << "   hidden layer delta [" << n << "] = " << delta [n] << endl;
+                        }
 
                     // update weight and bias at this layer
                         for (size_t n = 0; n < neuronCount; n++) {
@@ -226,28 +250,56 @@
                     return error;
                 }
 
+                // make it possible to use arrays instead of C arrays
+                template<typename input_t, typename expected_t>
+                __attribute__((always_inline))
+                inline float backwardPropagation (const array<input_t, inputCount> input, const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) {
+                    return backwardPropagation (*reinterpret_cast<const input_t (*)[inputCount]> (input.data ()), expected, previousLayerDelta);
+                }
+
+                template<typename input_t, typename expected_t>
+                __attribute__((always_inline))
+                inline float backwardPropagation (const input_t (&input) [inputCount], const array<expected_t, outputCount> expected, float previousLayerDelta [inputCount] = NULL) {
+                    return backwardPropagation (input, *reinterpret_cast<const expected_t (*)[outputCount]> (expected.data ()), previousLayerDelta);
+                }
+
+                template<typename input_t, typename expected_t>
+                __attribute__((always_inline))
+                inline float backwardPropagation (const array<input_t, inputCount> input, const array<expected_t, outputCount> expected, float previousLayerDelta [inputCount] = NULL) {
+                    return backwardPropagation (*reinterpret_cast<const input_t (*)[inputCount]> (input.data ()), *reinterpret_cast<const expected_t (*)[outputCount]> (expected.data ()), previousLayerDelta);
+                }
+
+
                 // export the whole model as C++ initializer list
                 friend ostream& operator << (ostream& os, const neuralNetworkLayer_t& nn) {
-                    int32_t *p = (int32_t *) &nn;
+                    float *p = (float *) &nn;
                     os << "{";
-                    for (size_t i = 0; i < sizeof (nn) / sizeof (int32_t); i++) {
+                    for (size_t i = 0; i < sizeof (nn) / sizeof (float); i++) {
                         if (i > 0) {
                             os << ",";
                             if (i % 10 == 0)
                                 os << endl;
                         }
-                        os << *(p + i);
+                        os << *(p + i) << 'f';
                     }
                     os << "}\n";
                     return os;
                 }
-                
+
                 template<size_t N>
-                neuralNetworkLayer_t& operator = (const int32_t (&model) [N]) {
-                    static_assert (N == sizeof (*this) / sizeof (int32_t), "Wrong size of model!");
-                    memcpy ((void *) this, (void *) model, N * sizeof (int32_t));
+                neuralNetworkLayer_t& operator = (const float (&model) [N]) {
+                    static_assert (N == sizeof (*this) / sizeof (float), "Wrong size of model!");
+                    
+                    memcpy ((void *) this, (void *) model, N * sizeof (float));
                     return *this;
-                }                
+                }
+
+                neuralNetworkLayer_t& operator = (const neuralNetworkLayer_t& other) {
+                    if (this != &other) {
+                        memcpy (this, &other, sizeof (*this));
+                    }
+                    return *this;
+                }
 
         };
 
@@ -267,32 +319,28 @@
 
                 // calculates the output neurons of the neural network and returns the category that the input belongs to
                 template<typename input_t>
-                output_t forwardPass (const input_t (&input) [inputCount]) {   
+                output_t forwardPass (const input_t (&input) [inputCount]) const {   
                     output_t neuron {};
 
-                    // neuron = a (w x input + bias)
+                    // neuron = af (w x input + bias)
                         for (size_t n = 0; n < neuronCount; n++) {
                             neuron [n] = bias [n];
                             for (size_t i = 0; i < inputCount; i++)
                                 neuron [n] += weight [n][i] * input [i];
                             neuron [n] = af<activationFunction> (neuron [n]);
-                            // cout << " neuron [" << n << "] = " << neuron [n] << endl;
+                            // cout << "   output layer neuron [" << n << "] = " << neuron [n] << endl;
                         }
-                            // exit (0);
-
-                    // softmax normalization of the result
-                        float sum = 0;
-                        for (size_t n = 0; n < neuronCount; n++)
-                            sum += expf (neuron [n]);
-                        for (size_t n = 0; n < neuronCount; n++)
-                            if (sum > 0)
-                                neuron [n] = expf (neuron [n]) / sum;
-                            else
-                                neuron [n] = 0;
 
                     // start returning the result through all the previous layers
                         return neuron;
                 }        
+
+                // make it possible to use arrays instead of C arrays
+                template<typename input_t>
+                __attribute__((always_inline))
+                inline output_t forwardPass (const array<input_t, inputCount> input) const {   
+                    return forwardPass (*reinterpret_cast<const input_t (*)[inputCount]> (input.data ()));
+                }
 
 
             // training
@@ -319,14 +367,14 @@
 
                 // update weight and bias in the output layer, returns the error
                 template<typename input_t, typename expected_t>
-                float backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [neuronCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
+                float backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
 
                     // while moving forward do exactly the same as forwardPass function does
                         float z [neuronCount];
                         float neuron [neuronCount];
 
                         // z = weight x input + bias
-                        // neuron = a (z)
+                        // neuron = af (z)
                         for (size_t n = 0; n < neuronCount; n++) {
                             z [n] = bias [n];
                             for (size_t i = 0; i < inputCount; i++)
@@ -337,8 +385,9 @@
                     // calculate the error
                     float error = 0;
                     for (size_t n = 0; n < neuronCount; n++)
-                        error += (expected [n] - neuron [n]) * (expected [n] - neuron [n]);
+                        error += (neuron [n] - expected [n]) * (neuron [n] - expected [n]);
                     error = sqrt (error) / 2; 
+                    // cout << "   output layer error = " << error << endl;
 
                     // update weight and bias at output layer
                         // delta = (neuron - expected) * a' (z)
@@ -349,9 +398,8 @@
                         for (size_t n = 0; n < neuronCount; n++) {
                             // calculat delta at output layer    
                             delta [n] = (neuron [n] - expected [n]) * af_derivative<activationFunction> (z [n]);
-                            
-                            // cout << " af' [" << n << "] = " << af_derivative<activationFunction> (z [n]) << endl;
-                            // cout << " delta [" << n << "] = " << delta [n] << endl;
+                            // cout << "   output layer af' [" << n << "] = " << af_derivative<activationFunction> (z [n]) << endl;
+                            // cout << "   output layer delta [" << n << "] = " << delta [n] << endl;
 
                             // update weight
                             for (size_t i = 0; i < inputCount; i++)
@@ -359,12 +407,7 @@
 
                             // update bias
                             bias [n] -= learningRate * delta [n];
-                            
-                            //cout << " bias [" << n << "] = " << bias [n] << endl;
                         }
-                        //cout << "--------------\n";
-                        
-                        
 
                     // calculate only the first part of previous layer delta, since z from previous layer is not available at this layer
                         // previousLayerDelta = weight * delta * a' (previous layer z)
@@ -379,28 +422,76 @@
                     return error;
                 }
 
+                // make it possible to use arrays instead of C arrays
+                template<typename input_t, typename expected_t>
+                __attribute__((always_inline))
+                inline float backwardPropagation (const array<input_t, inputCount> input, const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) {
+                    return backwardPropagation (*reinterpret_cast<const input_t (*)[inputCount]> (input.data ()), expected, previousLayerDelta);
+                }
+
+                template<typename input_t, typename expected_t>
+                __attribute__((always_inline))
+                inline float backwardPropagation (const input_t (&input) [inputCount], const array<expected_t, outputCount> expected, float previousLayerDelta [inputCount] = NULL) {
+                    return backwardPropagation (input, *reinterpret_cast<const expected_t (*)[outputCount]> (expected.data ()), previousLayerDelta);
+                }
+
+                template<typename input_t, typename expected_t>
+                __attribute__((always_inline))
+                inline float backwardPropagation (const array<input_t, inputCount> input, const array<expected_t, outputCount> expected, float previousLayerDelta [inputCount] = NULL) {
+                    return backwardPropagation (*reinterpret_cast<const input_t (*)[inputCount]> (input.data ()), *reinterpret_cast<const expected_t (*)[outputCount]> (expected.data ()), previousLayerDelta);
+                }
+
+
                 // export the whole model as C++ initializer list
                 friend ostream& operator << (ostream& os, const neuralNetworkLayer_t& nn) {
-                    int32_t *p = (int32_t *) &nn;
+                    float *p = (float *) &nn;
                     os << "{";
-                    for (size_t i = 0; i < sizeof (nn) / sizeof (int32_t); i++) {
+                    for (size_t i = 0; i < sizeof (nn) / sizeof (float); i++) {
                         if (i > 0) {
                             os << ",";
                             if (i % 10 == 0)
                                 os << endl;
                         }
-                        os << *(p + i);
+                        os << *(p + i) << 'f';
                     }
                     os << "}\n";
                     return os;
                 }
 
                 template<size_t N>
-                neuralNetworkLayer_t& operator = (const int32_t (&model) [N]) {
-                    static_assert (N == sizeof (*this) / sizeof (int32_t), "Wrong size of model!");
-                    memcpy ((void *) this, (void *) model, N * sizeof (int32_t));
+                neuralNetworkLayer_t& operator = (const float (&model) [N]) {
+                    static_assert (N == sizeof (*this) / sizeof (float), "Wrong size of model!");
+                    
+                    memcpy ((void *) this, (void *) model, N * sizeof (float));
                     return *this;
                 }
+                
+                neuralNetworkLayer_t& operator = (const neuralNetworkLayer_t& other) {
+                    if (this != &other) {
+                        memcpy (this, &other, sizeof (*this));
+                    }
+                    return *this;
+                }
+
         };
+
+
+
+    template<size_t N, typename T>
+    array<T, N> softmax (const array<T, N>& input) {
+        array<T, N> output {};
+    
+        // softmax normalization
+        T sum = 0;
+        for (size_t n = 0; n < N; n++)
+            sum += exp (input [n]);
+        for (size_t n = 0; n < N; n++)
+            if (sum > 0)
+                output [n] = exp (input [n]) / sum;
+            else
+                output [n] = 0;
+    
+        return output;
+    }
 
 #endif

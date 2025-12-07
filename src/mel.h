@@ -2,21 +2,32 @@
 
     mel.h
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Clap-Recognition-Using-a-Neural-Network-from-Scratch-Cpp-for-Arduino
 
     Data tables to implement mel filters are calculated in advance to achieve better performace at run-time.
     
-    Bojan Jurca, Sep 9, 2025
+    Bojan Jurca, Oct 10, 2025
 
 */
+
+
+// platform abstraction 
+#ifdef ARDUINO                  // Arduino build requires LightwaightSTL library: https://github.com/BojanJurca/Lightweight-Standard-Template-Library-STL-for-Arduino
+#else                           // standard C++ build
+    #include <cstddef>
+#endif
+
 
 #ifndef __MEL_H__
     #define __MEL_H__
 
- 
+    // #define sampleCount 256
+    // #define samplingFrequency 35750.0f
+    // #define NyquistFrequency ( samplingFrequency / 2 )
+
     #define melPointCount  ( melFilterCount + 2 )
  
-    #define maxMelFrequency ( 2595.0 * log10 (1.0 + NyquistFrequency / 700) )
+    #define maxMelFrequency ( 2595.0f * log10 (1.0 + NyquistFrequency / 700) )
     #define melFrequencyStep ( maxMelFrequency / (melPointCount - 1) )
 
     #define fftFrequencyStep ( samplingFrequency / sampleCount )
@@ -26,20 +37,20 @@
     array<float, distinctFftCoeficients> generateMelFftFrequencies () {
         array<float, distinctFftCoeficients> result = {};
         for (size_t i = 0; i < distinctFftCoeficients; i ++)
-            result [i] = static_cast<float>( 2595.0 * log10 (1 + (i * fftFrequencyStep) / 700) );
+            result [i] = 2595.0f * log10 (1 + (i * fftFrequencyStep) / 700);
         return result;
     }
-    auto melFftFrequency = generateMelFftFrequencies ();
+    const auto melFftFrequency = generateMelFftFrequencies ();
 
 
     // calculate the array of mel points
     array<float, melPointCount> generateMelPoints () {
         array<float, melPointCount> result = {};
         for (size_t i = 0; i < melPointCount; i ++)
-            result [i] = static_cast<float>( i * maxMelFrequency / (melPointCount - 1) );
+            result [i] = (float) i * maxMelFrequency / (melPointCount - 1);
         return result;
     }
-    auto melPoint = generateMelPoints ();
+    const auto melPoint = generateMelPoints ();
     // mel filter 0 is defined by triangle melPoint [0], melPoint [1], melPoint [2]
     // mel filter 1 is defined by triangle melPoint [1], melPoint [2], melPoint [3]
     // ...
@@ -47,6 +58,14 @@
 
     void calculateMelFilters (float *melFilterValue, float magnitude [distinctFftCoeficients]) { // melFilterValue is array floatMelFIleterValue [melFilterCount]
         /*
+        for (size_t i = 0; i < distinctFftCoeficients; i ++)
+            cout << 2595.0f * log10 (1 + (i * fftFrequencyStep) / 700) << endl;
+
+        cout << "   mel frequencies: ";
+        for (int i = 0; i < distinctFftCoeficients; i++)
+            cout << melFftFrequency [i] << "   ";
+        cout << endl;
+
         cout << "   mel points\n";
         for (int i = 0; i < melPointCount; i++)
             cout << "   " << melPoint [i] << "\n";

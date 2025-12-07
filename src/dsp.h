@@ -11,6 +11,14 @@
 */
 
 
+
+// platform abstraction 
+#ifdef ARDUINO                  // Arduino build requires LightwaightSTL library: https://github.com/BojanJurca/Lightweight-Standard-Template-Library-STL-for-Arduino
+#else                           // standard C++ build
+    #include <cstddef>
+#endif
+
+
 #ifndef __DSP_H__
     #define __DSP_H__
 
@@ -18,20 +26,20 @@
     #include "mel.h"
     #include "dct.h"
     
-    
-    void extractFeaturesFromSoundRecording (float feature [featureCount], int soundRecording [sampleCount]) {
-    
+    array<float, featureCount> extractFeatures (const int (&soundRecording) [sampleCount]) {
+        array<float, featureCount> features;
+
         #if ZCR == 1
             // feature [0] = zero crossings
-            feature [0] = 0;
+            features [ZCR - 1] = 0;
             for (int s = 1; s < sampleCount; s++)
                     if (signbit (soundRecording [s - 1]) != signbit (soundRecording [s])) 
-                            feature [0] ++;
+                            features [ZCR - 1] ++;
 
             // normalize this features = bring all the values somewhere in the range [0, 1]
-            feature [0] /= 30;                            
+            features [ZCR - 1] /= 30;                            
         #endif
-                        
+
         #if LRC == 1
             // feature [1] = linear regression coeficient
             int n = 0;
@@ -48,15 +56,14 @@
                     sumXY += x * y;
                     sumX2 += x * x;
             }
-            feature [ZCR] = (sumXY * n - sumX * sumY) / (sumX2 * n - sumX * sumX);
-            
+            features [ZCR + LRC - 1] = (sumXY * n - sumX * sumY) / (sumX2 * n - sumX * sumX);
+
             // normalize this features = bring all the values somewhere in the range [0, 1]
-            feature [ZCR] = 0.002 - 100 * feature [ZCR];
+            features [ZCR + LRC - 1] = 0.002 - 100 * features [ZCR + LRC - 1];
         #endif
 
         // the rest of the features are mel filter values, but first we need the magnitudes from FFT
         float magnitude [distinctFftCoeficients]; // output from FFT
-    
         {
             complex<float> fftInput [sampleCount];
             complex<float> fftOutput [sampleCount];
@@ -75,10 +82,12 @@
         dct (mfcc, melFilters);
 
         for (int i = 0; i < mfccCount; i++)
-            feature [ZCR + LRC + i] = mfcc [i]; // skip the first coeficient
+            features [ZCR + LRC + i] = mfcc [i];
 
         // normalize only the first coeficient, the other coefcients are already small enough
-        feature [ZCR + LRC] /= 30;
+        features [ZCR + LRC] /= 30;
+
+        return features;
     }
 
 #endif

@@ -2,13 +2,23 @@
 
     fft.h
 
-    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://github.com/BojanJurca/Neural-Network-from-Scratch-for-Arduino-A-Clap-Recognition-System
+    This file is part of Clap Recognition Using a Neural Network from Scratch (C++ for Arduino): https://
 
     Fast Fouriere Transform using Radix-2 algorithm with complexity of O (n log n), according to https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm
 
-    Bojan Jurca, May 22, 2025
+    Bojan Jurca, Oct 23, 2025
 
 */
+
+
+// platform abstraction 
+#ifdef ARDUINO                  // Arduino build requires LightwaightSTL library: https://github.com/BojanJurca/Lightweight-Standard-Template-Library-STL-for-Arduino
+    #include <complex.hpp>
+#else                           // standard C++ build
+    #include <cstddef>
+    #include <complex>
+    using std::complex;
+#endif
 
 
 #ifndef __FFT_H__
