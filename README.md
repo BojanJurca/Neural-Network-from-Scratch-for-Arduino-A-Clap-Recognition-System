@@ -1,8 +1,7 @@
-
 # Neural Network from Scratch (C++ for Arduino) - A Clap Recognition System
 
 
-Ever dreamed of building a clap recognition system that stays focused—even when a dog barks or dishes clatter in the background? Lightweight neural network delivers more than 90% accurate clap detection, all while running efficiently on Arduino boards without straining their resources.
+Ever dreamed of building a clap recognition system that stays focused even when a dog barks or dishes clatter in the background? Lightweight neural network delivers more than 90% accurate clap detection, all while running efficiently on Arduino boards without straining their resources.
 
 
 ## What You Need
@@ -25,13 +24,12 @@ The system is built of the following components:
 Clap recognition, including its neural network is not very demanding. An Arduino Mega 2560 will be just fine or an ESP32 for example. Analog microphones are chip but those that accuratelly output analog sound signal are not so easy to find. A LED diode is connected to board's pin through 220 ohm resistor.
 
 
-![Clap](clap.jpg)
-
-
 ## Sound Sampling
 
-A clap lasts around 7 ms. In this time we want to capture 256 samples which gives a sampling rate of 35 kHz. 
-It would be better to sample 10 ms with 40 kHz but due to limited processing power 7 ms with 35 kHz will do just fine.
+Clap recordings will lasts 7.1 ms. In this time we'll capture 256 samples giving a sampling rate of 35.750 kHz which is adequate for reliable clap detection and feature extraction.
+
+
+![Clap](clap.jpg)
 
 
 ## Neural Network
@@ -95,8 +93,7 @@ The project uses these activation functions:
 
 Each activation function has different properties, allowing the network to learn various patterns effectively.
 
-
-The sigmoid (logistic) function squashes any real input into the open interval (0, 1). It is commonly used in binary classification problems and in some historical neural network architectures. It is smooth and differentiable. Output is bounded between 0 and 1. Derivative becomes extremely small for large |x| (vanishing gradient problem).
+The sigmoid function squashes any real input into the open interval (0, 1). It is commonly used in binary classification problems and in some historical neural network architectures. It is smooth and differentiable. Output is bounded between 0 and 1. Derivative becomes extremely small for large |x| (vanishing gradient problem).
 
 The sigmoid function is defined as:
 
@@ -136,21 +133,26 @@ FastTanh is a rational approximation of tanh designed for faster computation (wi
 
 
 $$
-\\ FastTanh (x) = x \cdot \frac{27 + x^{2}}{27 + 9 \cdot x^{2}}
+\\ FastTanh (x) =
+\begin{cases}
+-1, & x < -3, \\
+\dfrac{x\cdot(27 + x^{2})}{27 + 9x^{2}}, & -3 \le x \le 3, \\
+1, & x > 3.
+\end{cases}
 $$
 
 
 ![Activation functions](af.jpg)
 
 
-## The use of neuralNetwork.hpp library
+## The use of LightweightNeuralNetwork.hpp library
 
 
 To perform a forward pass, you configure the neural network and then provide an input pattern:
 
 
 ```C++
-#include "neuralnetwork.hpp"
+#include "LightweightNeuralnetwork.hpp"
 
 
                 //   .--- the number of inputs
@@ -263,7 +265,7 @@ The following training code is a little oversimplified but works well for demons
     for (int gradientDescenIteration = 0; gradientDescenIteration < epoch; gradientDescenIteration ++) {
         // normally we would need like 1.000 training patterns
 
-        float loss = 0; // loss = Σ error of training pattern
+        float loss = 0; // loss = Σ error of training patterns
 
                                                                     //     .--- tell neuralNetwork that the pattern belongs to category 0 (0 is the index of output vector that designates category 0)
                                                                     //     |
@@ -278,9 +280,10 @@ The following training code is a little oversimplified but works well for demons
         loss += neuralNetwork.backwardPropagation ( { 19, 10, 3, 2, 1 }, { 0, 0, 1 } ); // expected = probability vector telling the neural network that the pattern belongs to category (with index) 2
     }
 
-    // export trained model as C++ int32_t initializer list
+    // export trained model as C++ initializer list
     cout << neuralNetwork << endl;
 ```
+
 
 Training the neural network involves setting weights and biases using training patterns at the input and expected results at the output. For each given pattern and expected result, an error is assessed at the output layer, and the weights and biases of the output layer are adjusted to minimize the error. Then, the same process is applied to the previous layer, and so on. This is why the process is called backward propagation-it propagates the error at the output layer back to the previous layers.
 
@@ -328,7 +331,7 @@ $$
 $$
 
 
-The another would be $N_{2} = \sqrt{-ln (U_{1}))} \cdot sin (2 \cdot \pi \cdot U_{2} ))$.
+The another one (not used here) would be $N_{2} = \sqrt{-ln (U_{1}))} \cdot sin (2 \cdot \pi \cdot U_{2} ))$.
 
 
 ```C++
@@ -352,7 +355,7 @@ The another would be $N_{2} = \sqrt{-ln (U_{1}))} \cdot sin (2 \cdot \pi \cdot U
 Biases are usually set to 0.
 
 
-This part is based on [Backpropagation calculus](https://www.3blue1brown.com/lessons/backpropagation-calculus).
+The derivation of the formulas used to update weights and biases is primarily based on [Backpropagation calculus](https://www.3blue1brown.com/lessons/backpropagation-calculus). Here, we will only add the remaining details.
 
 
 At this point, the results that the neural network produces are, well, pretty random. The neural network must be trained first with a set of patterns belonging to already known categories. The idea of training on each of the known input patterns is to minimize the difference (or the error) between the expected result and the result that the neural network actually produced. To assess the error of a single pattern, we’ll use a variant of the MSE function (mean squared error):
@@ -575,8 +578,8 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
 
 ```C++
 // hidden layers
-    template<typename input_t, typename expected_t>
-    void backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
+    template <size_t inputCount, size_t af, size_t neuronCount, size_t... sizes> 
+    class neuralNetworkLayer_t<inputCount, af, neuronCount, sizes...> {
 
         private:
 
@@ -591,7 +594,7 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
 
             // iterate from the last layer to the first and update weight and bias meanwhile
             template<typename input_t, typename expected_t>
-            float backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
+            float backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the number of neurons of the output layer
 
                 // while moving forward do exactly the same as forwardPass function does
                     float z [neuronCount];
@@ -638,8 +641,8 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
     };
 
 // output layer
-    template<typename input_t, typename expected_t>
-    void backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
+    template <size_t inputCount, size_t af, size_t neuronCount> 
+    class neuralNetworkLayer_t<inputCount, af, neuronCount> {
 
         private:
 
@@ -651,7 +654,7 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
         
             // iterate from the last layer to the first and adjust weight and bias meanwhile, returns the error clculated at output layer
             template<typename input_t, typename expected_t>
-            float backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [neuronCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the size of the output of the output layer
+            float backwardPropagation (const input_t (&input) [inputCount], const expected_t (&expected) [outputCount], float previousLayerDelta [inputCount] = NULL) { // the size of expected in all layers equals the number of neurons of the output layer
 
                 // while moving forward do exactly the same as forwardPass function does
                     float z [neuronCount];
@@ -707,15 +710,15 @@ Please note that delta gets updated in two distinct layers: _L_ and _L+1_. Neura
 ## Clap audio recording
 
 
-Proper preparation of input data is crucial for effective neural network performance. If we had built a convolutional neural network (CNN), we could feed it raw audio recordings directly, allowing the CNN to learn spatial and temporal patterns on its own. However, with a fully connected neural network like ours, a different strategy is required. Instead of raw data, we must extract a set of distinctive features from the sound recording—features that the network can then use for accurate classification.
+Proper preparation of input data is crucial for effective neural network performance. If we had built a convolutional neural network (CNN), we could feed it raw audio recordings directly, allowing the CNN to learn spatial and temporal patterns on its own. However, with a fully connected neural network like ours, a different strategy is required. Instead of raw data, we must extract a set of distinctive features from the sound recording-features that the network can then use for accurate classification.
 
-A clap has a distinctive shape on the oscilloscope, characterized by a loud, rapidly fading high-frequency sound. The most significant condition – a high amplitude of the sound is easily checked before the other features get estimated. These features are extracted or calculated from audio recording and (hopefully) distinguish claps from other loud sounds. Here is an example of a clap audio recording and its features. These features serve as the input to our neural network.
+A clap has a distinctive shape on the oscilloscope, characterized by a loud, rapidly fading high-frequency sound. The most significant condition - a high amplitude of the sound is easily checked before the other features get estimated. These features are extracted or calculated from audio recording and (hopefully) distinguish claps from other loud sounds. Here is an example of a clap audio recording and its features. These features serve as the input to our neural network.
 
 
 ![Clap characteristics](characteristics.jpg)
 
 
-The sound is sampled using 256 samples at a rate of 35.74 kHz, resulting in approximately 7.1 milliseconds of audio. This duration is sufficient to reliably detect a clap.
+The sound is sampled using 256 samples at a rate of 35.750 kHz, resulting in approximately 7.1 milliseconds of audio. This duration is sufficient to reliably detect a clap.
 
 Some features can be extracted directly from the time-domain signal, as the waveform varies over time.
 
