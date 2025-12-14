@@ -15,7 +15,6 @@
 #ifdef ARDUINO                  // Arduino build requires LightwaightSTL library: https://github.com/BojanJurca/Lightweight-Standard-Template-Library-STL-for-Arduino
     #include <array.hpp>
     #include <ostream.hpp>
-//    #define rand() random(RAND_MAX)
     #define srand(X) randomSeed(X)
     #ifdef ARDUINO_ARCH_AVR     // Arduino AVR
         unsigned long time (void *p) { return millis (); } // introduce time function only for the purpose of srand (time (NULL)) would work on AVR boards as well
@@ -90,7 +89,7 @@
 
 // ----- the neural network -----
  
-    #include "neuralNetwork.hpp"
+    #include "LightweightNeuralNetwork.hpp"
     
     //                                  .--- the number of inputs (= the number of pattern features)
     //                                  |          .--- first layer activation function
