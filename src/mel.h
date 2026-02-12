@@ -78,7 +78,7 @@
         // calculate the first range of FFT coeficients (for first half of mel triangle filter)
         int fromFftCoeficientIndex = 0;
 
-        int toFftCoeficientIndex;
+        int toFftCoeficientIndex = 0;
         for (int i = 0; i < distinctFftCoeficients; i++)
             if (melFftFrequency [i] < melPoint [1])
                 toFftCoeficientIndex = i;

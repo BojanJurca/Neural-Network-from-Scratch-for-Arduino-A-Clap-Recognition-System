@@ -26,9 +26,9 @@
     template<typename T, size_t N>
     void dct (T (&output) [N], T (&input) [N]) {
 
-        for (int k = 0; k < N; k ++) {
+        for (size_t k = 0; k < N; k ++) {
             double sum = 0.0;
-            for (int n = 0; n < N; n ++)
+            for (size_t n = 0; n < N; n ++)
                 sum += input [n] * cos (M_PI * k * (2 * n + 1) / (2.0 * N));
             
            output [k] = sum * sqrt (2.0 / N);

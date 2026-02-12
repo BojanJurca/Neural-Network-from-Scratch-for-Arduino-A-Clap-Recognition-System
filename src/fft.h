@@ -30,15 +30,15 @@
         static_assert((N > 0) && ((N & (N - 1)) == 0), "N must be a power of 2");
 
         // Calculate the number of stages to perform: 2^S = N
-        int S = 0;
-        for (int s = 1; s < N; s *= 2)
+        size_t S = 0;
+        for (size_t s = 1; s < N; s *= 2)
             S++;
 
         // Bit-reverse copy: output <- input
         for (size_t i = 0; i < N; i++) {
             size_t iTmp = i;
             size_t iReversed = 0;
-            for (int s = 1; s <= S; s++) {
+            for (size_t s = 1; s <= S; s++) {
                 iReversed = (iReversed << 1) | (iTmp & 0x01);
                 iTmp >>= 1;
             }
@@ -46,8 +46,8 @@
         }
 
         // Go through all the stages
-        for (int s = 1; s <= S; s++) {
-            int m = 1 << s; // m = 2^s
+        for (size_t s = 1; s <= S; s++) {
+            size_t m = 1 << s; // m = 2^s
             complex<T> omegam = exp (complex<T> (0, -2 * M_PI / m));
             for (size_t k = 0; k < N; k += m) {
                 complex<T> omega = { 1.f, 0.f };

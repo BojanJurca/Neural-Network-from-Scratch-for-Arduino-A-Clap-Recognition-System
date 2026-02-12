@@ -50,15 +50,15 @@
         // neuron activation function (Sigmoid, ReLU, Tanh or FastTanh)
         template <size_t activationFunction>
         float af (float x) {
-            if constexpr (activationFunction == Sigmoid) {
+            if (activationFunction == Sigmoid) {
                 return 1.f / (1.f + exp (-x)); // Sigmoid
-            } else if constexpr (activationFunction == ReLU) {
+            } else if (activationFunction == ReLU) {
                 return x <= 0.f ? 0.f : x; // ReLU
-            } else if constexpr (activationFunction == Tanh) {
+            } else if (activationFunction == Tanh) {
                 float ex = expf (x);
                 float enx = expf (-x);
                 return (ex - enx) / (ex + enx);
-            } else if constexpr (activationFunction == FastTanh) { // tanh approximation for faster calculation
+            } else if (activationFunction == FastTanh) { // tanh approximation for faster calculation
                 if (x < -3) return -1;
                 if (x > 3) return 1;
                 float x2 = x * x;
@@ -72,17 +72,17 @@
         // neuron activation function derivative (Sigmoid', ReLU', Tanh' or FastTanh')
         template <size_t activationFunction>
         float af_derivative (float x) {
-            if constexpr (activationFunction == Sigmoid) {
+            if (activationFunction == Sigmoid) {
                 float s = af<Sigmoid> (x);
                 return s * (1 - s); // Sigmoid'
-            } else if constexpr (activationFunction == ReLU) {
+            } else if (activationFunction == ReLU) {
                 return x <= 0.f ? 0.f : 1.f; // ReLU'
-            } else if constexpr (activationFunction == Tanh) {
+            } else if (activationFunction == Tanh) {
                 float ex = expf (x);
                 float enx = expf (-x);
                 float t = (ex - enx) / (ex + enx);
                 return 1.0f - t * t;
-            } else if constexpr (activationFunction == FastTanh) { // tanh' approximation for faster calculation
+            } else if (activationFunction == FastTanh) { // tanh' approximation for faster calculation
                 if (x < -3 || x > 3) return 0.0f;
                 float x2 = x * x;
                 return (x2 - 9) * (x2 -9) / (9 * (x2 + 3) * (x2 + 3));
