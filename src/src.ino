@@ -17,7 +17,7 @@
     #include <ostream.hpp>
     #define srand(X) randomSeed(X)
     #ifdef ARDUINO_ARCH_AVR     // Arduino AVR
-        unsigned long time (void *p) { return millis (); } // introduce time function only for the purpose of srand (time (NULL)) would work on AVR boards as well
+        unsigned long time (void *p) { p = p; return millis (); } // introduce time function only for the purpose of srand (time (NULL)) would work on AVR boards as well
     #endif
 #else                           // standard C++ build
     #include <cstddef>
